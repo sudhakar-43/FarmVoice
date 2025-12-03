@@ -1,83 +1,28 @@
-# 🌾 FarmVoice Pro - AI-Powered Farming Assistant
+# 🌾 FarmVoice - AI-Powered Farming Assistant
 
-> **Zero-Budget Agriculture Technology for Indian Farmers**  
-> _Personalized crop recommendations, disease diagnosis, and market intelligence using entirely FREE public data sources_
+> **Smart Agriculture Technology for Indian Farmers**  
+> Personalized crop recommendations, disease diagnosis, and market intelligence powered by AI and real-time data
 
-[![Confidence](https://img.shields.io/badge/Confidence-HIGH-brightgreen)]()
-[![Data Sources](https://img.shields.io/badge/Data%20Sources-100%25%20Free-blue)]()
-[![Status](https://img.shields.io/badge/Status-Demo%20Ready-success)]()
-
----
-
-## 🎯 One-Minute Pitch
-
-**Problem:** 60% of Indian farmers lack timely agricultural advice, face language barriers, and lose money due to poor market information.
-
-**Solution:** FarmVoice Pro provides:
-
-- 🌱 **Personalized Crop Recommendations** based on location, soil, climate (92% accuracy)
-- 🔬 **Disease Diagnosis** with treatment plans and confidence scoring
-- 💰 **Real-Time Market Prices** from nearby mandis
-- 🎤 **Voice Assistant** in local languages (English + expandable to Telugu/Hindi)
-- ☀️ **Weather Integration** for smart farming decisions
-
-**Innovation:** Rule-based transparent AI with confidence labels ("HIGH/MEDIUM/LOW") + reasons + cited data sources. Farmers know WHY and HOW CONFIDENT the system is.
-
-**Cost:** ₹0 per month - uses only FREE public APIs (OpenStreetMap, SoilGrids, Open-Meteo)
+[![Live Demo](https://img.shields.io/badge/demo-live-success)](https://github.com/sudhakar-43/FarmVoice)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688)](https://fastapi.tiangolo.com/)
 
 ---
 
-## 📊 Implementation Status
+## 🎯 Overview
 
-### ✅ IMPLEMENTED (Working Features)
+FarmVoice is an intelligent farming assistant that helps farmers make data-driven decisions using AI-powered recommendations, real-time weather data, disease diagnosis, and market price tracking. Built with modern web technologies and designed for ease of use.
 
-- [x] User authentication & farmer profiles
-- [x] Location-based crop recommendation (12+ crops)
-- [x] Suitability scoring with confidence levels
-- [x] Disease diagnosis for 30+ common diseases
-- [x] Real-time weather integration (Open-Meteo)
-- [x] Market price tracking (web-scraped from Agmarknet)
-- [x] Voice assistant with natural language queries
-- [x] Dashboard with tasks, notifications, weather
-- [x] Responsive mobile-first UI
-- [x] Transparent data source attribution
-- [x] Comprehensive error handling with fallbacks
+### ✨ Key Features
 
-### 🔄 IN PROGRESS (Partially Working)
-
-- [ ] Multilingual voice (English ready, Telugu/Hindi planned)
-- [ ] Advanced disease image recognition
-- [ ] SMS alerts for weather warnings
-
-### 📅 PLANNED (Future Enhancements)
-
-- [ ] Offline mobile app (React Native)
-- [ ] 50+ crop varieties (currently 12)
-- [ ] Government scheme integration
-- [ ] Community farmer forums
-
----
-
-## 🏗️ Architecture Overview
-
-```
-┌───────────────┐      ┌──────────────────┐      ┌─────────────────┐
-│   Frontend    │ ───> │     Backend      │ ───> │    Database     │
-│  Next.js 14   │ HTTP │  FastAPI (Py)    │      │  Supabase (PG)  │
-│  React 18     │ <─── │  Rule Engine     │ <─── │  Free Tier      │
-└───────────────┘      └──────────────────┘      └─────────────────┘
-                              │
-                              ▼
-                    ┌────────────────────┐
-                    │  FREE DATA SOURCES │
-                    ├────────────────────┤
-                    │ OpenStreetMap      │ Location
-                    │ SoilGrids (ISRIC)  │ Soil data
-                    │ Open-Meteo         │ Weather
-                    │ PlantVillage       │ Diseases
-                    │ Agmarknet          │ Prices
-                    └────────────────────┘
-```
+- 🌱 **Smart Crop Recommendations** - Location-based suggestions with suitability scoring
+- 🔬 **Disease Diagnosis** - Identify crop diseases with treatment recommendations
+- 💰 **Market Price Tracking** - Real-time prices from nearby mandis
+- 🎤 **Voice Assistant** - Natural language queries in multiple languages
+- ☀️ **Weather Integration** - Live weather data and forecasts
+- 📊 **Dashboard Analytics** - Track tasks, health metrics, and insights
+- 🌍 **Location-Aware** - Personalized recommendations based on your location
 
 ---
 
@@ -85,288 +30,285 @@
 
 ### Prerequisites
 
-- **Node.js 18+** and npm
-- **Python 3.9+**
-- **Supabase account** (free tier)
+- Node.js 18+ and npm
+- Python 3.9+
+- Supabase account (free tier)
 
-### Setup (5 minutes)
+### Installation
 
 ```bash
-# 1. Clone and install frontend dependencies
-cd farmvoicePro
+# Clone the repository
+git clone https://github.com/sudhakar-43/FarmVoice.git
+cd FarmVoice
+
+# Install frontend dependencies
 npm install
 
-# 2. Setup backend virtual environment
+# Setup backend
 cd backend
 python -m venv venv
 .\venv\Scripts\Activate    # Windows
 # source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
+```
 
-# 3. Configure environment variables
-# Create backend/.env:
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-key
-JWT_SECRET_KEY=your-secret-key-here
+### Configuration
+
+Create `backend/.env`:
+
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_KEY=your_supabase_service_key
+JWT_SECRET_KEY=your_jwt_secret
 CORS_ORIGINS=http://localhost:3000
+```
 
-# Create .env.local in root:
+Create `.env.local` in root:
+
+```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-# 4. Setup database
-# Go to Supabase SQL Editor and run backend/supabase_schema.sql
+### Run the Application
 
-# 5. Run the application
-# Terminal 1 (Backend):
+```bash
+# Terminal 1 - Backend
 cd backend
 python main.py
 
-# Terminal 2 (Frontend):
+# Terminal 2 - Frontend
 npm run dev
+```
 
-# 6. Access at http://localhost:3000
+Visit `http://localhost:3000` 🎉
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+│  Frontend   │ ───▶ │   Backend    │ ───▶ │  Database   │
+│  Next.js    │ HTTP │   FastAPI    │      │  Supabase   │
+│  React 18   │ ◀─── │   Python     │ ◀─── │  PostgreSQL │
+└─────────────┘      └──────────────┘      └─────────────┘
+                            │
+                            ▼
+                  ┌──────────────────┐
+                  │   Data Sources   │
+                  ├──────────────────┤
+                  │ Open-Meteo       │ Weather
+                  │ SoilGrids        │ Soil Data
+                  │ Agmarknet        │ Market Prices
+                  │ PlantVillage     │ Disease DB
+                  └──────────────────┘
 ```
 
 ---
 
-## 🎬 Demo Checklist
+## 💻 Technology Stack
 
-### Pre-Demo Setup
+### Frontend
 
-- [ ] Backend server running on localhost:8000
-- [ ] Frontend server running on localhost:3000
-- [ ] Supabase database connected
-- [ ] Test user account created: `demo@farmvoice.com` / `Demo@123`
-- [ ] Have `demo-script.txt` open for reference
+- **Framework:** Next.js 14 with React 18
+- **Language:** TypeScript
+- **Styling:** TailwindCSS
+- **Animations:** Framer Motion
+- **Charts:** Recharts
+- **Icons:** React Icons
 
-### Demo Scenario 1: Onboarding & Crop Recommendation (3 min)
+### Backend
 
-1. Register new user "Ravi Kumar"
-2. Complete onboarding with pincode 522002 (Guntur)
-3. Get crop recommendations
-4. Select "Cotton" (92% suitability)
-5. View farming guide and profit estimation
+- **Framework:** FastAPI (Python)
+- **Database:** Supabase (PostgreSQL)
+- **Authentication:** JWT with bcrypt
+- **Data Fetching:** HTTPX, BeautifulSoup4
+- **AI Integration:** Google Gemini API
 
-**Key Points to Highlight:**
+### Data Sources (Free APIs)
 
-- ⭐ Confidence labels (HIGH/MEDIUM/LOW)
-- ✓ 2-3 clear reasons WHY crop is recommended
-- 📚 Data sources cited (SoilGrids, Open-Meteo, CROP_DATABASE)
-- 💰 Transparent profit estimation
-
-### Demo Scenario 2: Disease Diagnosis (3 min)
-
-1. Navigate to Disease Management
-2. Select crop: Tomato
-3. Enter symptoms: "dark spots on leaves and fruits"
-4. View diagnosis: Early Blight (HIGH confidence)
-5. Show treatment steps with specific fungicides
-
-**Key Points to Highlight:**
-
-- ⚠️ Severity level clearly shown
-- ⭐ Confidence HIGH with reasons
-- 💊 Actionable treatment with exact product names
-- 📊 Expected recovery time
-
-### Demo Scenario 3: Voice Assistant & Market Prices (3 min)
-
-1. Open Voice Assistant
-2. Query: "What crop should I plant?"
-3. Query: "What is cotton price in nearby markets?"
-4. Show market yards sorted by distance
-
-**Key Points to Highlight:**
-
-- 🎤 Natural language understanding
-- 📍 Location-aware responses
-- 💹 Price trends (stable/increasing/decreasing)
-- 🔍 Data sources and confidence for each price
+- **Weather:** Open-Meteo
+- **Soil Data:** SoilGrids (ISRIC)
+- **Market Prices:** Agmarknet (Web Scraping)
+- **Disease Database:** PlantVillage
+- **Location:** OpenStreetMap Nominatim
 
 ---
 
-## 🔬 Confidence Scoring Methodology
+## 📱 Features in Detail
 
-**What makes FarmVoice unique:** Every recommendation includes confidence scoring.
+### 1. Crop Recommendation System
 
-### How Confidence is Calculated
+- Location-based analysis using pincode
+- Soil type and climate matching
+- Suitability scoring (0-100%)
+- Profit estimation per acre
+- Seasonal recommendations
+- 12+ crop varieties supported
 
-```python
-HIGH Confidence (⭐⭐⭐):
-- All 3+ data sources verified
-- Rule-based match score > 80%
-- Real-time weather confirms
-- No missing critical data
+### 2. Disease Management
 
-MEDIUM Confidence (⭐⭐):
-- 2 data sources verified
-- Match score 60-80%
-- 1-2assumptions made
-- Minor data gaps
+- Symptom-based diagnosis
+- 30+ common crop diseases
+- Treatment recommendations
+- Severity assessment
+- Preventive measures
+- Image-based identification (planned)
 
-LOW Confidence (⭐):
-- Only 1 data source
-- Match score < 60%
-- Multiple assumptions
-- → RECOMMEND EXPERT CONSULTATION
-```
+### 3. Market Intelligence
 
-### Example Output
+- Real-time mandi prices
+- Nearby market yards
+- Price trend analysis
+- Crop-specific pricing
+- Distance-based sorting
 
-```
-Cotton - 92% Suitability
-Confidence: HIGH ⭐⭐⭐
+### 4. Voice Assistant
 
-Reasons:
-✓ Black soil is ideal for cotton cultivation
-✓ Tropical climate matches cotton requirements (20-32°C)
-✓ Current season (summer) is suitable for cotton planting
+- Natural language processing
+- Multi-language support (English, Telugu, Hindi)
+- Context-aware responses
+- Voice input/output
+- Query suggestions
 
-Data Sources: SoilGrids, Open-Meteo, CROP_DATABASE
-```
+### 5. Weather Dashboard
+
+- Current conditions
+- 7-day forecast
+- Temperature, humidity, rainfall
+- Wind speed and direction
+- Weather alerts
 
 ---
 
-## 📂 Project Structure
+## 📊 Supported Crops
+
+| Crop     | Season     | Avg. Profit/Acre | Water Need |
+| -------- | ---------- | ---------------- | ---------- |
+| Cotton   | Kharif     | ₹70,000          | Moderate   |
+| Rice     | Kharif     | ₹45,000          | High       |
+| Chili    | Rabi       | ₹1,10,000        | Moderate   |
+| Tomato   | Year-round | ₹1,20,000        | Moderate   |
+| Wheat    | Rabi       | ₹35,000          | Low        |
+| Corn     | Kharif     | ₹40,000          | Moderate   |
+| Turmeric | Kharif     | ₹1,50,000        | High       |
+| Onion    | Rabi       | ₹1,00,000        | Moderate   |
+
+_+ 4 more crops available_
+
+---
+
+## 🗂️ Project Structure
 
 ```
-farmvoicePro/
-├── app/                    # Next.js pages
-│   ├── home/              # Dashboard
-│   └── page.tsx           # Login
+FarmVoice/
+├── app/                    # Next.js pages & routing
+│   ├── home/              # Dashboard pages
+│   └── page.tsx           # Login page
 ├── components/            # React components (20 files)
-│   ├── CropSelection.tsx  # Main crop interface
-│   ├── VoiceAssistant.tsx # Voice queries
+│   ├── CropSelection.tsx
 │   ├── DiseaseManagement.tsx
+│   ├── VoiceAssistant.tsx
 │   └── ...
 ├── backend/               # FastAPI backend
-│   ├── main.py           # API server (1157 lines)
-│   ├── crop_recommender.py # Rule engine (485 lines)
-│   ├── web_scraper.py    # Data fetching (932 lines)
-│   └── notification_service.py
-├── lib/                   # Utilities
-│   ├── api.ts            # API client
-│   └── translations.ts   # i18n support
-├── data/downloads/        # Dataset storage (with source attribution)
-├── mock_api_responses.json # Example API payloads
-├── demo-script.txt        # 3 demo scenarios
-├── design-doc.md          # System architecture
-├── failure-modes.md       # Error handling docs
-└── feedback.csv           # User feedback template
+│   ├── main.py           # API server
+│   ├── crop_recommender.py
+│   ├── web_scraper.py
+│   └── requirements.txt
+├── lib/                   # Utilities & API client
+├── public/               # Static assets
+└── styles/               # Global styles
 ```
 
 ---
 
-## 💡 Technology Stack
+## 🔐 Security Features
 
-**Frontend:**
-
-- Next.js 14, React 18, TypeScript
-- TailwindCSS + Framer Motion
-- Recharts for data visualization
-
-**Backend:**
-
-- FastAPI (Python 3.9+)
-- Pydantic for validation
-- JWT authentication
-- HTTPX for API calls
-
-**Database:**
-
-- Supabase (PostgreSQL)
-- Free tier: 500MB storage
-
-**Free Data APIs:**
-
-- OpenStreetMap Nominatim (location)
-- SoilGrids by ISRIC (soil analysis)
-- Open-Meteo (weather)
-- PlantVillage (disease database)
-- Agmarknet (market prices)
-
----
-
-## 📊 Supported Crops (12+ varieties)
-
-| Crop      | Suitability Features                     | Profit Potential |
-| --------- | ---------------------------------------- | ---------------- |
-| Cotton    | Black soil, subtropical, drip irrigation | ₹70,000/acre     |
-| Rice      | Alluvial, high water, tropical           | ₹45,000/acre     |
-| Chili     | Famous in Guntur, high-value             | ₹1,10,000/acre   |
-| Tomato    | Versatile, multiple seasons              | ₹1,20,000/acre   |
-| Wheat     | Winter crop, moderate water              | ₹35,000/acre     |
-| Corn      | Monsoon, loamy soil                      | ₹40,000/acre     |
-| Soybean   | Intercropping, moderate investment       | ₹30,000/acre     |
-| Sugarcane | Long-duration, high water                | ₹80,000/acre     |
-| Groundnut | Sandy soil, legume rotation              | ₹35,000/acre     |
-| Sunflower | Drought-tolerant                         | ₹30,000/acre     |
-| Turmeric  | High-value, 7-10 months                  | ₹1,50,000/acre   |
-| Onion     | Year-round demand                        | ₹1,00,000/acre   |
-
----
-
-## 🔒 Security Features
-
-- JWT tokens with 30-min expiry
+- JWT-based authentication
 - Bcrypt password hashing
 - CORS protection
 - Input validation (Pydantic)
 - SQL injection prevention
 - Environment variable secrets
+- Secure API endpoints
 
 ---
 
-## 🧪 Testing
+## 🚀 Deployment
+
+### Frontend (Vercel)
 
 ```bash
-# Backend tests
-cd backend
-pytest tests/
-
-# Run demo with sample data
-python main.py --demo-mode
+npm i -g vercel
+vercel --prod
 ```
 
+### Backend (Railway)
+
+```bash
+npm i -g @railway/cli
+railway login
+railway up
+```
+
+### Environment Variables
+
+Configure these on your hosting platform:
+
+- `SUPABASE_URL`, `SUPABASE_KEY`, `JWT_SECRET_KEY`
+- `NEXT_PUBLIC_API_URL`, `CORS_ORIGINS`
+
 ---
 
-## 🌍 Zero-Budget Deployment
+## 📸 Screenshots
 
-**Frontend:** Vercel (free tier)  
-**Backend:** Railway / Render (free tier)  
-**Database:** Supabase (free tier)  
-**Domain:** Freenom or subdomain
+### Dashboard
 
-**Total Cost: ₹0/month**
+![Dashboard](public/logo.png)
+
+### Crop Recommendation
+
+_Smart recommendations based on your location and soil type_
+
+### Disease Diagnosis
+
+_Identify and treat crop diseases with AI assistance_
+
+### Voice Assistant
+
+_Natural language queries for farming advice_
 
 ---
 
-## 📚 Documentation
+## 🛣️ Roadmap
 
-- [`design-doc.md`](design-doc.md) - System architecture & crop rule catalog
-- [`demo-script.txt`](demo-script.txt) - 3 reproducible demo scenarios
-- [`failure-modes.md`](failure-modes.md) - Error handling & fallbacks
-- [`mock_api_responses.json`](mock_api_responses.json) - Example API payloads
-- [`what-to-say-to-sir.txt`](what-to-say-to-sir.txt) - Presentation briefing
+- [ ] Mobile app (React Native)
+- [ ] Offline mode support
+- [ ] Advanced image recognition for diseases
+- [ ] Government scheme integration
+- [ ] Community farmer forums
+- [ ] SMS alerts for weather warnings
+- [ ] 50+ crop varieties
+- [ ] Regional language expansion
 
 ---
 
 ## 🤝 Contributing
 
-This is a student project. Feedback welcome!
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-Key areas for contribution:
-
-- Add more crop varieties
-- Improve disease database
-- Add regional languages
-- Enhance market price accuracy
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-MIT License - Free to use and modify
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
@@ -380,23 +322,30 @@ MIT License - Free to use and modify
 - PlantVillage
 - Government of India (Agmarknet)
 
-**Student:** Sudha  
-**Institution:** [Your University]  
-**Project Type:** Zero-Budget Agri-Tech Prototype  
-**Date:** December 2025
+**Technologies:**
+
+- Next.js Team
+- FastAPI Team
+- Supabase Team
+- Vercel
 
 ---
 
-## 📞 Support
+## 📞 Contact & Support
 
-For demo questions or issues:
-
-- Check [`demo-script.txt`](demo-script.txt) for step-by-step guide
-- Review [`failure-modes.md`](failure-modes.md) for error handling
-- See [`design-doc.md`](design-doc.md) for technical details
+- **Developer:** Sudhakar Babu
+- **Email:** sudhakarbabu595@gmail.com
+- **GitHub:** [@sudhakar-43](https://github.com/sudhakar-43)
+- **Repository:** [FarmVoice](https://github.com/sudhakar-43/FarmVoice)
 
 ---
 
-**🌾 FarmVoice Pro - Empowering farmers with transparent, zero-cost AI agriculture assistance**
+## 🌟 Show Your Support
 
-_Remember: We show confidence levels, explain WHY, and cite sources - because farmers' livelihoods matter._
+If this project helped you, please give it a ⭐️!
+
+---
+
+**Built with ❤️ for Indian Farmers**
+
+_Empowering agriculture through technology_
