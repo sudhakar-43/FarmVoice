@@ -4,6 +4,8 @@
 
 [functions]
   directory = "netlify/functions"
+
+[functions.api]
   included_files = ["backend/**", "!backend/venv/**", "!backend/__pycache__/**", "!backend/.pytest_cache/**", "!backend/models/**"]
 
 [[redirects]]
