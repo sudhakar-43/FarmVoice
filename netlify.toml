@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "pip install -r backend/requirements.txt -t backend/lib && npm run build"
   publish = ".next"
   
 [build.environment]
