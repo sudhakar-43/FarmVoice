@@ -11,9 +11,9 @@ try:
     # On Netlify Lambda, task root is /var/task
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Assuming file is in /var/task/netlify/functions/api.py
+    # Assuming file is in /var/task/netlify/functions/api/__init__.py
     # Root would be /var/task
-    root_dir = os.path.abspath(os.path.join(current_dir, '../../'))
+    root_dir = os.path.abspath(os.path.join(current_dir, '../../../'))
     backend_path = os.path.join(root_dir, 'backend')
     
     # Add both paths to be safe
