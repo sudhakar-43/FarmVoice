@@ -51,31 +51,31 @@ html {
   .text-balance {
     text-wrap: balance;
   }
-  
+
   .card-hover {
     @apply transition-all duration-200 hover:shadow-lg;
   }
-  
+
   .gradient-text {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600;
   }
-  
+
   .hover-lift {
     @apply transition-transform duration-200 hover:-translate-y-0.5;
   }
-  
+
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2;
   }
-  
+
   .btn-primary {
     @apply bg-emerald-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-emerald-700 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02];
   }
-  
+
   .btn-secondary {
     @apply bg-white text-gray-700 border border-gray-300 px-6 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md;
   }
-  
+
   .input-field {
     @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white;
   }
@@ -112,7 +112,8 @@ html {
   }
 
   @keyframes blob {
-    0%, 100% {
+    0%,
+    100% {
       transform: translate(0, 0) scale(1);
     }
     25% {
@@ -139,7 +140,8 @@ html {
   }
 
   @keyframes pulse-slow {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
     }
     50% {
@@ -230,5 +232,40 @@ html {
   .gradient-text-purple {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600;
   }
-}
 
+
+  /* Glassmorphism Utilities */
+  .glass-panel {
+    @apply bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 shadow-xl;
+  }
+
+  .glass-panel-hover {
+    @apply hover:bg-white/80 dark:hover:bg-gray-900/70 transition-all duration-300;
+  }
+  
+  .glass-card {
+    @apply bg-white/40 dark:bg-gray-800/40 backdrop-blur-md border border-white/30 dark:border-gray-700/30 shadow-lg rounded-2xl;
+  }
+
+  /* Bento Grid Layout Utilities */
+  .bento-grid {
+    @apply grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[minmax(180px,auto)];
+  }
+
+  .bento-item-large {
+    @apply md:col-span-2 md:row-span-2;
+  }
+
+  .bento-item-medium {
+    @apply md:col-span-2 md:row-span-1;
+  }
+
+  .bento-item-small {
+    @apply md:col-span-1 md:row-span-1;
+  }
+
+  /* Premium Gradients */
+  .bg-gradient-premium {
+    @apply bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-900 dark:via-gray-900 dark:to-slate-900;
+  }
+}

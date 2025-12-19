@@ -119,53 +119,135 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden relative flex flex-col">
-        {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-emerald-50 to-teal-50 border-b-2 border-emerald-200 p-6 flex items-center justify-between z-10">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden relative flex flex-col border border-gray-200 dark:border-gray-700">
+        {/* Professional Header */}
+        <div className="sticky top-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-6 flex items-center justify-between z-10 shadow-lg">
           <div className="flex items-center space-x-4">
-            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 w-14 h-14 rounded-xl flex items-center justify-center shadow-lg">
-              <FaLeaf className="text-white text-2xl" />
+            <div className="bg-white w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg border-2 border-white/50">
+              <span className="text-4xl">
+                {(() => {
+                  const rawName = crop.name || crop.original_name || crop.crop_name || "";
+                  const cropName = rawName.toLowerCase().trim();
+                  
+                  // Find matching emoji using includes (partial match)
+                  const cropEmojiList: [string, string][] = [
+                    ["tomato", "🍅"],
+                    ["rice", "🌾"],
+                    ["wheat", "🌾"],
+                    ["potato", "🥔"],
+                    ["onion", "🧅"],
+                    ["maize", "🌽"],
+                    ["corn", "🌽"],
+                    ["cotton", "☁️"],
+                    ["sugarcane", "🎋"],
+                    ["banana", "🍌"],
+                    ["mango", "🥭"],
+                    ["apple", "🍎"],
+                    ["orange", "🍊"],
+                    ["grape", "🍇"],
+                    ["carrot", "🥕"],
+                    ["cabbage", "🥬"],
+                    ["pepper", "🌶️"],
+                    ["chili", "🌶️"],
+                    ["cucumber", "🥒"],
+                    ["brinjal", "🍆"],
+                    ["eggplant", "🍆"],
+                    ["pumpkin", "🎃"],
+                    ["spinach", "🥬"],
+                    ["groundnut", "🥜"],
+                    ["peanut", "🥜"],
+                    ["soybean", "🫘"],
+                    ["coconut", "🥥"],
+                    ["watermelon", "🍉"],
+                    ["lemon", "🍋"],
+                    ["pineapple", "🍍"],
+                    ["strawberry", "🍓"],
+                    ["garlic", "🧄"],
+                    ["ginger", "🫚"],
+                    ["mushroom", "🍄"],
+                    ["pea", "🫛"],
+                    ["cherry", "🍒"],
+                    ["peach", "🍑"],
+                    ["pear", "🍐"],
+                    ["papaya", "🥭"],
+                    ["broccoli", "🥦"],
+                    ["lettuce", "🥬"],
+                    ["bean", "🫘"],
+                    ["coffee", "☕"],
+                    ["tea", "🍵"],
+                    ["sunflower", "🌻"],
+                    ["mustard", "🌼"],
+                  ];
+                  
+                  for (const [keyword, emoji] of cropEmojiList) {
+                    if (cropName.includes(keyword)) {
+                      return emoji;
+                    }
+                  }
+                  return "🌱"; // Default seedling
+                })()}
+              </span>
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">{crop.original_name || crop.name}</h2>
-              {crop.suitability_score !== undefined && (
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${
+              <h2 className="text-3xl font-extrabold text-white tracking-tight">
+                {crop.name || crop.original_name || crop.crop_name || crop.title || "Crop Details"}
+              </h2>
+              <div className="flex items-center space-x-3 mt-2">
+                {crop.suitability_score !== undefined && (
+                  <span className={`px-4 py-1.5 rounded-full text-sm font-bold shadow-md ${
                     crop.is_suitable !== false
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-white text-emerald-700"
                       : "bg-red-100 text-red-700"
                   }`}>
-                    {crop.is_suitable !== false ? `${crop.suitability_score}% Suitable` : "Not Suitable"}
+                    {crop.is_suitable !== false ? `✓ ${crop.suitability_score}% Suitable` : "✗ Not Suitable"}
                   </span>
-                </div>
-              )}
+                )}
+                {crop.category && (
+                  <span className="px-3 py-1 bg-white/20 text-white rounded-full text-xs font-medium">
+                    {crop.category}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all duration-200 group"
             aria-label="Close modal"
           >
-            <FaTimes className="text-gray-600 text-xl" />
+            <FaTimes className="text-white text-xl group-hover:rotate-90 transition-transform duration-200" />
           </button>
         </div>
 
-        {/* Location and Weather Info - Like Image 3 */}
+        {/* Location and Weather Info */}
         {locationData && (
-          <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-blue-50 border-b-2 border-emerald-200 p-6">
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 w-16 h-16 rounded-xl flex items-center justify-center shadow-lg">
-                  <FaMapMarkerAlt className="text-white text-2xl" />
+          <div className="bg-gradient-to-r from-slate-50 to-gray-100 dark:from-gray-800 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-md">
+                  <FaMapMarkerAlt className="text-white text-lg" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    {locationData.location?.name || `${locationData.location?.city || ''}, ${locationData.location?.state || ''}`}
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    {/* Check nested location object first, then flat structure */}
+                    {locationData.location?.name || 
+                     locationData.location?.display_name ||
+                     locationData.display_name ||
+                     locationData.location?.city || 
+                     locationData.city ||
+                     locationData.location?.district ||
+                     locationData.district ||
+                     locationData.location?.state ||
+                     locationData.state ||
+                     `Pincode ${locationData.pincode || crop.pincode}`}
                   </h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    {locationData.location?.district && `${locationData.location.district}, `}
-                    {locationData.location?.state} • Pincode: {locationData.pincode || crop.pincode}
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    {[
+                      locationData.location?.district || locationData.district, 
+                      locationData.location?.state || locationData.state
+                    ].filter(Boolean).join(", ") || "India"} 
+                    {(locationData.pincode || crop.pincode) && ` • ${locationData.pincode || crop.pincode}`}
                   </p>
                 </div>
               </div>
@@ -415,7 +497,7 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
                         </span>
                       </div>
                       <p className="text-gray-700 mb-4">{disease.description}</p>
-                      {disease.prevention && disease.prevention.length > 0 && (
+                      {Array.isArray(disease.prevention) && disease.prevention.length > 0 && (
                         <div>
                           <p className="text-sm font-semibold text-gray-900 mb-2">Prevention Measures:</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

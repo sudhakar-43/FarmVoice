@@ -71,3 +71,26 @@ Thumbs.db
 # Deliverables and temporary files
 deliverables/
 changes/
+
+# Voice Service - Model Files (large files, download separately)
+backend/models/*.gguf
+backend/models/*.bin
+backend/models/*.onnx
+backend/models/faster-whisper-*
+backend/models/piper-tts-*
+backend/models/llama-*
+
+# Voice Service - Logs
+backend/logs/voice_service.log
+backend/logs/*.log
+
+# Voice Service - Audio Cache (debug mode)
+backend/debug/audio/
+*.wav
+*.webm
+*.ogg
+*.mp3
+
+# Voice Service - Configuration (contains API keys)
+backend/.env.voice.local
+

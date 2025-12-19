@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, WebSocket, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
@@ -9,13 +9,30 @@ from supabase import create_client, Client
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from web_scraper import get_pincode_data, get_location_data_from_coords, get_fallback_weather, get_market_prices_for_location
+from web_scraper import get_pincode_data, get_location_data_from_coords, get_fallback_weather, get_market_prices_for_location, get_weather_data
 from crop_recommender import recommend_crops as get_crop_recommendations, check_crop_suitability
 from notification_service import generate_all_notifications
+
+# Import voice service modules
+from voice_service.config import config as voice_config
+from voice_service.websocket_handler import ws_handler
+from voice_service.planner import voice_planner
+from voice_service.observability import metrics_collector
+from voice_service.cache_manager import cache_manager
+
+# Import new routers
+from routers import home_router, voice_router, market_router, disease_router, features_router
 
 load_dotenv()
 
 app = FastAPI(title="FarmVoice API", version="1.0.0")
+
+# Include new routers
+app.include_router(home_router.router)
+app.include_router(voice_router.router)
+app.include_router(market_router.router)
+app.include_router(disease_router.router)
+app.include_router(features_router.router)
 
 # CORS Configuration
 origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -86,6 +103,7 @@ class DiseaseDiagnosis(BaseModel):
 
 class VoiceQuery(BaseModel):
     query: str
+    language: Optional[str] = "en"  # en, te (Telugu), hi (Hindi)
 
 class VoiceResponse(BaseModel):
     response: str
@@ -192,7 +210,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -540,103 +558,273 @@ async def get_market_prices(
     
     return prices
 
+@app.get("/api/weather/current")
+async def get_current_weather_endpoint(
+    lat: Optional[float] = None, 
+    lon: Optional[float] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get real-time weather data for the dashboard.
+    Scrapes data based on user location.
+    """
+    try:
+        # Default fallback
+        latitude = 20.5937
+        longitude = 78.9629
+        
+        # 1. Try to use provided coordinates
+        if lat and lon:
+            latitude = lat
+            longitude = lon
+        else:
+            # 2. Try to get from user profile
+            try:
+                profile_res = supabase.table("farmer_profiles").select("*").eq("user_id", current_user["id"]).execute()
+                if profile_res.data:
+                    profile = profile_res.data[0]
+                    if profile.get("latitude") and profile.get("longitude"):
+                        latitude = profile.get("latitude")
+                        longitude = profile.get("longitude")
+                    elif profile.get("pincode"):
+                        # Get coords from pincode if no direct coords
+                        pincode_data = await get_pincode_data(profile.get("pincode"))
+                        if pincode_data:
+                            latitude = pincode_data.get("latitude", latitude)
+                            longitude = pincode_data.get("longitude", longitude)
+            except Exception as e:
+                print(f"Error fetching profile for weather: {e}")
+
+        # 3. Get comprehensive location & weather data
+        # We use get_location_data_from_coords because it gives us the location name (City/Village) AND weather
+        data = await get_location_data_from_coords(latitude, longitude)
+        
+        # 4. Format for frontend
+        weather = data.get("weather", {})
+        current = weather.get("current", {})
+        forecast = weather.get("forecast", {})
+        
+        # Extract location name suitable for display
+        location_name = "India"
+        if data.get("city") and data.get("city") != "Unknown":
+            location_name = data.get("city")
+        elif data.get("district") and data.get("district") != "Unknown":
+            location_name = data.get("district")
+        elif data.get("state") and data.get("state") != "Unknown":
+            location_name = data.get("state")
+        elif data.get("display_name"):
+            # Simplify display name (first part)
+            location_name = data.get("display_name").split(",")[0]
+            
+        return {
+            "temperature": current.get("temperature", 25),
+            "condition": current.get("condition", "Clear"),
+            "humidity": current.get("humidity", 60),
+            "wind_speed": current.get("wind_speed", 10),
+            "location": location_name,
+            "high": forecast.get("max_temp", 30),
+            "low": forecast.get("min_temp", 20)
+        }
+        
+    except Exception as e:
+        print(f"Weather endpoint error: {e}")
+        # Return safe fallback
+        return {
+            "temperature": 25,
+            "condition": "Sunny", 
+            "humidity": 50, 
+            "wind_speed": 5, 
+            "location": "Farm Location", 
+            "high": 30, 
+            "low": 20
+        }
+
+
+from fastapi import BackgroundTasks
+
+def log_voice_query(user_id: str, query: str, response: str):
+    try:
+        supabase.table("voice_queries").insert({
+            "user_id": user_id,
+            "query": query,
+            "response": response,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }).execute()
+    except Exception as e:
+        print(f"Failed to log query: {e}")
+
 @app.post("/api/voice/query", response_model=VoiceResponse)
 async def process_voice_query(
     request: VoiceQuery,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
-    # Process voice query with Gemini AI
+    # Process voice query - try Ollama first, fall back to Gemini if not available
     try:
-        import google.generativeai as genai
+        # ========== FETCH USER PERSONALIZATION DATA ==========
         
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            # Fallback to simple keyword matching if no key provided
-            return await process_voice_query_fallback(request, current_user)
-            
-        genai.configure(api_key=api_key)
+        # 1. Fetch farmer profile
+        farmer_name = current_user.get("name", "Farmer")
+        pincode = ""
+        location_address = ""
+        acres = 0
+        lat = None
+        lon = None
         
-        # Set up the model
-        model = genai.GenerativeModel('gemini-pro')
-        
-        # Context for the AI
-        system_context = """
-        You are FarmVoice, an intelligent AI assistant for farmers. 
-        Your goal is to provide helpful, accurate, and practical advice on farming, crops, diseases, and market prices.
-        Keep your responses concise (under 3-4 sentences) as they will be spoken out loud.
-        If the user asks about app features, guide them:
-        - "Crop Recommendation": for finding suitable crops.
-        - "Disease Management": for diagnosing plant issues.
-        - "Market Prices": for checking current crop prices.
-        """
-        
-        chat = model.start_chat(history=[])
-        response = chat.send_message(f"{system_context}\n\nUser Query: {request.query}")
-        
-        response_text = response.text
-        
-        # Generate suggestions based on response (simplified)
-        suggestions = ["Ask another question", "Check related feature"]
-        
-        # Save query to database
         try:
-            supabase.table("voice_queries").insert({
-                "user_id": current_user["id"],
-                "query": request.query,
-                "response": response_text,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }).execute()
-        except Exception:
-            pass
+            profile_result = supabase.table("farmer_profiles").select("*").eq("user_id", current_user["id"]).execute()
+            if profile_result.data:
+                profile = profile_result.data[0]
+                farmer_name = profile.get("full_name") or farmer_name
+                pincode = profile.get("pincode", "")
+                location_address = profile.get("location_address", "")
+                acres = profile.get("acres_of_land", 0) or 0
+                lat = profile.get("latitude")
+                lon = profile.get("longitude")
+        except Exception as e:
+            print(f"Error fetching profile: {e}")
+        
+        # 2. Fetch real-time weather for user's location
+        weather_info = "Weather data unavailable"
+        season = "current season"
+        
+        try:
+            if lat and lon:
+                weather_data = get_fallback_weather(lat, lon)
+                if weather_data:
+                    temperature = f"{weather_data.get('temperature', 'N/A')}°C"
+                    humidity = f"{weather_data.get('humidity', 'N/A')}%"
+                    conditions = weather_data.get('conditions', 'Clear')
+                    season = weather_data.get('season', 'current season')
+                    weather_info = f"{temperature}, {conditions}, Humidity: {humidity}"
+        except Exception as e:
+            print(f"Error fetching weather: {e}")
+        
+        # 3. Fetch user's selected crops
+        crops_list = []
+        try:
+            crops_result = supabase.table("selected_crops").select("*").eq("user_id", current_user["id"]).execute()
+            if crops_result.data:
+                for crop in crops_result.data[:5]:
+                    crop_name = crop.get("crop_name") or crop.get("name", "Unknown")
+                    crops_list.append(crop_name)
+        except Exception as e:
+            print(f"Error fetching crops: {e}")
+        
+        crops_text = ", ".join(crops_list) if crops_list else "No crops selected yet"
+        
+        # 4. Get current date/time info
+        current_time = datetime.now()
+        time_of_day = "morning" if current_time.hour < 12 else ("afternoon" if current_time.hour < 17 else "evening")
+        current_date = current_time.strftime("%B %d, %Y")
+        
+        # ========== BUILD PERSONALIZED CONTEXT ==========
+        
+        system_context = f"""You are FarmVoice, a helpful AI farming assistant. Be VERY brief (1-2 sentences max).
+
+Farmer: {farmer_name}, Location: {location_address or 'India'}, Farm: {acres} acres
+Crops: {crops_text}
+Weather: {weather_info}
+
+Keep responses under 50 words. Be practical and direct."""
+        
+        # Add language instruction to the user query
+        language_instruction = ""
+        if request.language == "te":
+            language_instruction = "\n\n[IMPORTANT: Please respond in Telugu (తెలుగు) language. Use Telugu script.]"
+        elif request.language == "hi":
+            language_instruction = "\n\n[IMPORTANT: Please respond in Hindi (हिंदी) language. Use Devanagari script.]"
+        
+        user_query = request.query + language_instruction
+        
+        response_text = ""
+        
+        # Try Ollama first (for local development)
+        try:
+            import ollama
+            model_name = "llama3.1:latest"
+            
+            response = ollama.chat(
+                model=model_name, 
+                messages=[
+                    {
+                        'role': 'system',
+                        'content': system_context,
+                    },
+                    {
+                        'role': 'user',
+                        'content': user_query,
+                    },
+                ],
+                options={
+                    'num_predict': 80,      # Limit response tokens for speed
+                    'temperature': 0.7,     # Slightly lower for faster generation
+                    'top_p': 0.9,
+                    'num_ctx': 512,         # Smaller context window for speed
+                }
+            )
+            
+            response_text = response['message']['content']
+            print("Using Ollama for voice query")
+            
+        except (ImportError, Exception) as ollama_error:
+            # Fallback to Gemini API
+            print(f"Ollama unavailable ({ollama_error}), using Gemini API")
+            try:
+                import google.generativeai as genai
+                
+                # Get API key from environment
+                gemini_api_key = os.getenv("GOOGLE_API_KEY")
+                if not gemini_api_key:
+                    raise HTTPException(
+                        status_code=500, 
+                        detail="Neither Ollama nor Gemini API is available. Please configure GOOGLE_API_KEY."
+                    )
+                
+                genai.configure(api_key=gemini_api_key)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                
+                # Combine system context and user query
+                full_prompt = f"{system_context}\n\nUser Question: {user_query}"
+                
+                gemini_response = model.generate_content(full_prompt)
+                response_text = gemini_response.text
+                print("Using Gemini API for voice query")
+                
+            except Exception as gemini_error:
+                print(f"Gemini API error: {gemini_error}")
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Voice processing failed. Please ensure Ollama is running locally or GOOGLE_API_KEY is set."
+                )
+        
+        # Generate contextual suggestions
+        suggestions = []
+        query_lower = request.query.lower()
+        if any(word in query_lower for word in ["crop", "grow", "plant"]):
+            suggestions = ["Check Crop Recommendations", "View Market Prices"]
+        elif any(word in query_lower for word in ["disease", "pest", "problem", "leaf"]):
+            suggestions = ["Upload Photo for Diagnosis", "View Disease Guide"]
+        elif any(word in query_lower for word in ["price", "market", "sell"]):
+            suggestions = ["View Market Prices", "Check Nearby Markets"]
+        else:
+            suggestions = ["Ask about your crops", "Check today's weather"]
+        
+        # Log to background
+        background_tasks.add_task(log_voice_query, current_user["id"], request.query, response_text)
         
         return {
             "response": response_text,
             "suggestions": suggestions
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Gemini Error: {e}")
-        # Fallback on error
-        return await process_voice_query_fallback(request, current_user)
+        print(f"Voice processing error: {e}")
+        raise HTTPException(status_code=500, detail=f"Voice processing failed: {str(e)}")
 
-async def process_voice_query_fallback(request: VoiceQuery, current_user: dict):
-    # Original simple keyword matching logic
-    query_lower = request.query.lower()
-    
-    response_text = ""
-    suggestions = []
-    
-    if any(word in query_lower for word in ["crop", "recommend", "what to grow"]):
-        response_text = "Based on your query, I recommend checking the Crop Recommendation feature. For best results, consider factors like soil type, climate, and water availability. Would you like me to help you with specific crop recommendations?"
-        suggestions = ["Check crop recommendations", "View soil requirements"]
-    elif any(word in query_lower for word in ["disease", "pest", "sick", "problem"]):
-        response_text = "I can help you identify and manage crop diseases. Please describe the symptoms you're seeing, or use the Disease Management feature to get AI-powered diagnosis and treatment recommendations."
-        suggestions = ["Open disease management", "Upload plant image"]
-    elif any(word in query_lower for word in ["market", "price", "cost", "sell"]):
-        response_text = "For current market prices and trends, I recommend checking the Market feature. It provides real-time price information for various crops. What specific crop prices are you interested in?"
-        suggestions = ["View market prices", "Check price trends"]
-    elif any(word in query_lower for word in ["hello", "hi", "hey"]):
-        response_text = "Hello! I'm FarmVoice, your AI farming assistant. I can help you with crop recommendations, disease management, and market information. What would you like to know?"
-        suggestions = ["Crop recommendations", "Disease help", "Market prices"]
-    else:
-        response_text = f"I understand you're asking about: {request.query}. I can help you with crop recommendations, disease management, and market prices. Could you be more specific about what you need?"
-        suggestions = ["Crop help", "Disease diagnosis", "Market info"]
-    
-    # Save query to database
-    try:
-        supabase.table("voice_queries").insert({
-            "user_id": current_user["id"],
-            "query": request.query,
-            "response": response_text,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
-    except Exception:
-        pass
-    
-    return {
-        "response": response_text,
-        "suggestions": suggestions
-    }
+
 
 # New Endpoints for Extended Features
 
@@ -1132,6 +1320,8 @@ async def get_weather(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch weather data: {str(e)}")
 
+
+
 @app.post("/api/disease/predict")
 async def predict_disease(
     request: dict,
@@ -1405,6 +1595,194 @@ async def get_notifications(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         print(f"Error in get_notifications: {e}")
         return []
+
+# ============================================================================
+# NEW VOICE SERVICE ENDPOINTS (Real-time Voice Assistant)
+# ============================================================================
+
+# WebSocket endpoint for real-time voice communication
+@app.websocket("/ws/voice")
+async def voice_websocket(websocket: WebSocket):
+    """WebSocket endpoint for real-time voice assistant"""
+    await ws_handler.handle_connection(websocket)
+
+# REST API endpoints for voice service
+
+class VoiceChatRequest(BaseModel):
+    text: str
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    lang: str = "en"
+
+@app.post("/api/voice/chat")
+async def voice_chat(
+    request: VoiceChatRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Text-based voice query endpoint (REST fallback)
+    Compatible with existing /api/voice/query but uses new voice service
+    """
+    try:
+        # Build context
+        context = {
+            "lat": request.lat or 20.5937,
+            "lon": request.lon or 78.9629,
+            "language": request.lang
+        }
+        
+        # Process through voice planner
+        result = await voice_planner.process_query(
+            query=request.text,
+            context=context
+        )
+        
+        return {
+            "speech": result.get("speech", ""),
+            "canvas_spec": result.get("canvas_spec", {}),
+            "ui": result.get("ui", {}),
+            "timings": result.get("timings", {}),
+            "cached": result.get("cached", False),
+            "success": result.get("success", True)
+        }
+        
+    except Exception as e:
+        metrics_collector.log_event("WARN", f"Voice chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Voice chat failed: {str(e)}")
+
+class ThemeRequest(BaseModel):
+    theme: str  # "dark" or "light"
+
+@app.post("/api/voice/theme")
+async def change_theme(
+    request: ThemeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Change UI theme via voice command"""
+    try:
+        result = await voice_planner.process_theme_command(request.theme)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/voice/action")
+async def voice_action(
+    request: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Handle canvas action buttons"""
+    action_id = request.get("action_id")
+    
+    if action_id == "save_plan":
+        return {"success": True, "message": "Plan saved successfully"}
+    elif action_id == "refresh_prices":
+        return {"success": True, "message": "Prices refreshed"}
+    else:
+        return {"success": False, "message": "Unknown action"}
+
+# Admin endpoints for voice service configuration
+
+def verify_admin_token(x_admin_token: str = Header(None)):
+    """Verify admin token from header"""
+    if not x_admin_token or x_admin_token != voice_config.admin_token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid admin token"
+        )
+    return True
+
+@app.get("/api/voice/admin/config")
+async def get_voice_config(admin: bool = Depends(verify_admin_token)):
+    """Get current voice service configuration"""
+    return voice_config.to_dict()
+
+class VoiceModeUpdate(BaseModel):
+    mode: str  # "local", "hybrid", or "cloud"
+
+@app.post("/api/voice/admin/config/mode")
+async def update_voice_mode(
+    request: VoiceModeUpdate,
+    admin: bool = Depends(verify_admin_token)
+):
+    """Update voice service mode"""
+    if request.mode not in ["local", "hybrid", "cloud"]:
+        raise HTTPException(status_code=400, detail="Invalid mode")
+    
+    success = voice_config.update_mode(request.mode, "admin_api")
+    
+    if success:
+        return {
+            "success": True,
+            "mode": voice_config.voice_mode,
+            "persisted": voice_config.allow_mode_persist
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update mode")
+
+class ThresholdUpdate(BaseModel):
+    warn_ms: Optional[int] = None
+    failsafe_ms: Optional[int] = None
+
+@app.post("/api/voice/admin/config/thresholds")
+async def update_thresholds(
+    request: ThresholdUpdate,
+    admin: bool = Depends(verify_admin_token)
+):
+    """Update performance thresholds"""
+    success = voice_config.update_thresholds(
+        warn_ms=request.warn_ms,
+        failsafe_ms=request.failsafe_ms
+    )
+    
+    if success:
+        return {
+            "success": True,
+            "warn_ms": voice_config.warn_ms,
+            "failsafe_ms": voice_config.failsafe_ms
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update thresholds")
+
+@app.get("/api/voice/admin/health")
+async def voice_health(admin: bool = Depends(verify_admin_token)):
+    """Get detailed health metrics for voice service"""
+    return metrics_collector.get_health_data()
+
+@app.get("/api/voice/admin/cache/stats")
+async def cache_stats(admin: bool = Depends(verify_admin_token)):
+    """Get cache statistics"""
+    return cache_manager.get_stats()
+
+@app.post("/api/voice/admin/cache/clear")
+async def clear_cache(admin: bool = Depends(verify_admin_token)):
+    """Clear all cache entries"""
+    cache_manager.clear()
+    return {"success": True, "message": "Cache cleared"}
+
+@app.get("/api/voice/admin/sessions")
+async def get_sessions(admin: bool = Depends(verify_admin_token)):
+    """Get active WebSocket sessions"""
+    return {
+        "active_sessions": ws_handler.get_active_sessions_count(),
+        "sessions": ws_handler.get_session_info()
+    }
+
+# Public health endpoint (no auth required)
+@app.get("/api/voice/health")
+async def public_voice_health():
+    """Public health check for voice service"""
+    return {
+        "status": "healthy",
+        "mode": voice_config.voice_mode,
+        "active_sessions": ws_handler.get_active_sessions_count(),
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+# WebSocket endpoint for voice service
+@app.websocket("/ws/voice")
+async def websocket_endpoint(websocket: WebSocket):
+    await ws_handler.handle_connection(websocket)
 
 if __name__ == "__main__":
     import uvicorn

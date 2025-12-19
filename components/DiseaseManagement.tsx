@@ -20,6 +20,12 @@ interface RiskForecast {
   color: string;
 }
 
+interface SelectedCrop {
+  id: string;
+  crop_name: string;
+  status: string;
+}
+
 export default function DiseaseManagement() {
   const { t } = useSettings();
   const [cropSearch, setCropSearch] = useState("");
@@ -28,39 +34,74 @@ export default function DiseaseManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [riskForecast, setRiskForecast] = useState<RiskForecast[]>([]);
+  const [userCrops, setUserCrops] = useState<SelectedCrop[]>([]);
+  const [loadingUserCrops, setLoadingUserCrops] = useState(true);
 
   const commonCrops = ["Rice", "Wheat", "Corn", "Tomato", "Potato", "Cotton", "Soybean", "Sugarcane", "Chilli", "Mango"];
 
   const filteredCrops = commonCrops.filter(c => c.toLowerCase().includes(cropSearch.toLowerCase()));
 
+  // Fetch user's selected crops on mount and auto-load diseases
   useEffect(() => {
-    // Fetch risk forecast from backend API
-    const fetchRiskForecast = async () => {
+    const fetchUserCrops = async () => {
       try {
-        // TODO: Implement API call to fetch risk forecast based on current weather
-        // const response = await apiClient.getDiseaseRiskForecast();
-        // setRiskForecast(response.data || []);
-        setRiskForecast([]);
+        const response = await apiClient.getSelectedCrops();
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          setUserCrops(response.data);
+          // Auto-select the first active crop
+          const activeCrop = response.data.find((c: any) => c.status === 'active') || response.data[0];
+          if (activeCrop) {
+            setCropSearch(activeCrop.crop_name);
+            // Auto-fetch diseases for the user's crop
+            await fetchDiseasesForCrop(activeCrop.crop_name);
+          }
+        }
       } catch (error) {
-        console.error("Error fetching risk forecast:", error);
-        setRiskForecast([]);
+        console.error("Error fetching user crops:", error);
+      } finally {
+        setLoadingUserCrops(false);
       }
     };
+    fetchUserCrops();
     fetchRiskForecast();
   }, []);
 
-  const handlePredict = async () => {
-    if (!cropSearch) {
-      setError(t('enter_crop_error'));
-      return;
+  const fetchRiskForecast = async () => {
+    try {
+      const response = await apiClient.request<any>('/api/disease-risk-forecast');
+      if (response.data) {
+        const formattedRisks: RiskForecast[] = [];
+        if (response.data.humidity_risk) {
+          formattedRisks.push({
+            level: response.data.humidity_risk > 70 ? "High" : response.data.humidity_risk > 50 ? "Moderate" : "Low",
+            factor: "Humidity Risk",
+            icon: <FaCloudRain />,
+            color: response.data.humidity_risk > 70 ? "bg-red-100 text-red-600 border-red-200" : "bg-yellow-100 text-yellow-600 border-yellow-200"
+          });
+        }
+        if (response.data.temperature_stress) {
+          formattedRisks.push({
+            level: response.data.temperature_stress > 35 ? "High" : response.data.temperature_stress > 30 ? "Moderate" : "Low",
+            factor: "Temperature Stress",
+            icon: <FaTemperatureHigh />,
+            color: response.data.temperature_stress > 35 ? "bg-orange-100 text-orange-600 border-orange-200" : "bg-green-100 text-green-600 border-green-200"
+          });
+        }
+        setRiskForecast(formattedRisks);
+      }
+    } catch (error) {
+      console.error("Error fetching risk forecast:", error);
+      setRiskForecast([]);
     }
+  };
 
+  const fetchDiseasesForCrop = async (cropName: string) => {
     setIsLoading(true);
     setError("");
     setPredictions([]);
 
     try {
-      const response = await apiClient.predictDisease(cropSearch);
+      const response = await apiClient.predictDisease(cropName);
       
       if (response.error) {
         throw new Error(response.error);
@@ -79,6 +120,14 @@ export default function DiseaseManagement() {
     }
   };
 
+  const handlePredict = async () => {
+    if (!cropSearch) {
+      setError(t('enter_crop_error'));
+      return;
+    }
+    await fetchDiseasesForCrop(cropSearch);
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       
@@ -94,6 +143,31 @@ export default function DiseaseManagement() {
               <p className="text-gray-500 dark:text-gray-400">{t('disease_management_desc')}</p>
             </div>
           </div>
+          
+          {/* User's Crops Quick Select */}
+          {userCrops.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Crops:</p>
+              <div className="flex flex-wrap gap-2">
+                {userCrops.map((crop) => (
+                  <button
+                    key={crop.id}
+                    onClick={() => {
+                      setCropSearch(crop.crop_name);
+                      fetchDiseasesForCrop(crop.crop_name);
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      cropSearch === crop.crop_name
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200'
+                    }`}
+                  >
+                    {crop.crop_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('select_crop_label')}</label>
@@ -146,18 +220,28 @@ export default function DiseaseManagement() {
             {t('disease_risk_forecast')}
           </h3>
           <div className="space-y-3">
-            {riskForecast.map((risk, idx) => (
+            {riskForecast.length > 0 ? riskForecast.map((risk, idx) => (
               <div key={idx} className={`p-3 rounded-xl border flex items-center gap-3 ${risk.color}`}>
                 <div className="text-xl opacity-80">{risk.icon}</div>
                 <div>
-                  <div className="font-bold text-sm">{t(`risk_level_${risk.level.toLowerCase()}` as any)}</div>
-                  <div className="text-xs opacity-90">{t(risk.factor as any)}</div>
+                  <div className="font-bold text-sm">{risk.level}</div>
+                  <div className="text-xs opacity-90">{risk.factor}</div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading risk data...</p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Loading state for initial crop fetch */}
+      {loadingUserCrops && (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-600 border-t-transparent mx-auto mb-2"></div>
+          <p className="text-gray-500">Loading your crop diseases...</p>
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (
@@ -212,7 +296,7 @@ export default function DiseaseManagement() {
         )}
       </AnimatePresence>
       
-      {!isLoading && predictions.length === 0 && !error && (
+      {!isLoading && !loadingUserCrops && predictions.length === 0 && !error && (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
           <FaLeaf className="mx-auto text-4xl text-gray-300 dark:text-gray-600 mb-3" />
           <p className="text-gray-500 dark:text-gray-400">{t('select_crop_prompt')}</p>

@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import HomePage from "@/components/HomePage";
-import Onboarding from "@/components/Onboarding";
-import NewLoader from "@/components/NewLoader";
+import Loading3D from "@/components/Loading3D";
 
 export default function Home() {
   const router = useRouter();
@@ -12,46 +11,58 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const auth = localStorage.getItem("farmvoice_auth");
-    if (auth !== "true") {
-      router.push("/");
-      return;
-    }
+    // Check auth immediately
+    const checkAuth = () => {
+      const auth = localStorage.getItem("farmvoice_auth");
+      if (auth !== "true") {
+        router.push("/");
+        return false;
+      }
+      return true;
+    };
+
+    if (!checkAuth()) return;
     
     setIsAuthenticated(true);
     
-    // Check onboarding status
-    const checkOnboarding = async () => {
+    // Check profile with timeout to prevent hanging
+    const checkProfile = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
       try {
         const token = localStorage.getItem("farmvoice_token");
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/farmer/profile`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        
-        if (response.ok) {
-          // We just check if profile exists/is valid, but we don't block for onboarding/crops anymore here
-          // as those are handled in their respective routes/flows
+        if (!token) {
+          setIsLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error("Error checking onboarding:", err);
+        
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/farmer/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal
+        });
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          console.log("Profile check timed out, continuing...");
+        } else {
+          console.error("Profile check error:", err);
+        }
       } finally {
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
     
-    checkOnboarding();
+    checkProfile();
   }, [router]);
 
-  if (!isAuthenticated || isLoading) {
-    return <NewLoader />;
+  if (isLoading) {
+    return <Loading3D message="Loading your farm..." />;
   }
 
-
-
-
+  if (!isAuthenticated) {
+    return <Loading3D message="Redirecting..." />;
+  }
 
   return <HomePage />;
 }
-

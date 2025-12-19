@@ -166,11 +166,38 @@ Visit `http://localhost:3000` 🎉
 
 ### 4. Voice Assistant
 
+#### Classic Mode
+
 - Natural language processing
 - Multi-language support (English, Telugu, Hindi)
 - Context-aware responses
-- Voice input/output
+- Voice input/output via browser Speech APIs
 - Query suggestions
+
+#### **NEW: Real-Time Voice Assistant** 🎤
+
+Advanced voice interaction with WebSocket-powered real-time communication:
+
+- **Real-time Voice Streaming**: Continuous audio streaming for instant feedback
+- **WebSocket Architecture**: Low-latency bidirectional communication
+- **Three Operation Modes**:
+  - **Local Mode**: Offline-capable with local STT/TTS/LLM models
+  - **Hybrid Mode**: Local voice processing + cloud AI (recommended)
+  - **Cloud Mode**: Full cloud integration for best quality
+- **Visual Canvas Responses**: Rich, structured AI responses with interactive elements
+- **Auto-Reconnection**: Reliable connection with automatic recovery
+- **Audio Level Indicator**: Real-time visual feedback while speaking
+- **Multi-format Support**: Adaptive audio codec selection
+
+**Technical Details**:
+
+- STT: Faster-Whisper (local) or cloud services
+- TTS: Piper TTS (local) or cloud services
+- LLM: Gemini AI or local Llama models
+- Protocol: WebSocket (ws:// or wss://)
+- Audio: Multiple codec support (Opus, WebM, etc.)
+
+**Setup**: See [Voice Assistant Runbook](docs/VOICE_ASSISTANT_RUNBOOK.md)
 
 ### 5. Weather Dashboard
 

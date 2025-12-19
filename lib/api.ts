@@ -204,13 +204,13 @@ class ApiClient {
   }
 
   // Voice assistant
-  async processVoiceQuery(query: string) {
+  async processVoiceQuery(query: string, language: string = "en") {
     return this.request<{
       response: string;
       suggestions?: string[];
     }>("/api/voice/query", {
       method: "POST",
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, language }),
     });
   }
 

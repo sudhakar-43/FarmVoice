@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FaMicrophone, FaMicrophoneSlash, FaTimes, FaStop } from "react-icons/fa";
+import {
+  FaMicrophone,
+  FaMicrophoneSlash,
+  FaTimes,
+  FaStop,
+} from "react-icons/fa";
 import { apiClient } from "@/lib/api";
 
 interface VoiceAssistantProps {
@@ -9,7 +14,7 @@ interface VoiceAssistantProps {
 }
 
 interface Message {
-  type: 'user' | 'assistant';
+  type: "user" | "assistant";
   text: string;
   timestamp: Date;
 }
@@ -21,7 +26,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null);
-  
+
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const lastTranscriptRef = useRef("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -35,9 +40,9 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
     if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
-      
+
       if (!recognitionRef.current) return;
-      
+
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = "en-US";
@@ -73,14 +78,14 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
               lastTranscriptRef.current = "";
             }
           }, 2000); // Auto-process after 2 seconds of silence
-          
+
           setSilenceTimer(timer);
         }
       };
 
       recognitionRef.current.onerror = (event: any) => {
         console.error("Speech recognition error:", event.error);
-        if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        if (event.error !== "aborted" && event.error !== "no-speech") {
           setIsListening(false);
         }
       };
@@ -112,7 +117,9 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert("Speech recognition is not supported in your browser. Please use Chrome or Edge.");
+      alert(
+        "Speech recognition is not supported in your browser. Please use Chrome or Edge."
+      );
       return;
     }
 
@@ -124,7 +131,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
       }
       recognitionRef.current.stop();
       setIsListening(false);
-      
+
       // Process any pending transcript
       if (transcript.trim()) {
         processQuery(transcript.trim());
@@ -145,48 +152,48 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
 
   const processQuery = async (query: string) => {
     if (!query.trim()) return;
-    
+
     // Add user message to history
     const userMessage: Message = {
-      type: 'user',
+      type: "user",
       text: query,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
-    
+    setMessages((prev) => [...prev, userMessage]);
+
     setIsProcessing(true);
 
     try {
       const response = await apiClient.processVoiceQuery(query);
-      
+
       if (response.error) {
         const errorMessage: Message = {
-          type: 'assistant',
+          type: "assistant",
           text: "Sorry, I encountered an error. Please try again.",
-          timestamp: new Date()
+          timestamp: new Date(),
         };
-        setMessages(prev => [...prev, errorMessage]);
+        setMessages((prev) => [...prev, errorMessage]);
         setIsProcessing(false);
         return;
       }
 
       if (response.data) {
         const assistantMessage: Message = {
-          type: 'assistant',
+          type: "assistant",
           text: response.data.response,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
-        setMessages(prev => [...prev, assistantMessage]);
+        setMessages((prev) => [...prev, assistantMessage]);
         setIsProcessing(false);
         speakResponse(response.data.response);
       }
     } catch (err) {
       const errorMessage: Message = {
-        type: 'assistant',
+        type: "assistant",
         text: "Sorry, I couldn't process your query. Please try again.",
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
       setIsProcessing(false);
     }
   };
@@ -198,15 +205,29 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
       utterance.rate = 0.9;
       utterance.pitch = 1;
       utterance.volume = 1;
-      
+
+      // Select a female voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const femaleVoice = voices.find(
+        (voice) =>
+          voice.name.includes("Female") ||
+          voice.name.includes("Zira") ||
+          voice.name.includes("Google US English") ||
+          voice.name.includes("Samantha")
+      );
+
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+      }
+
       utterance.onend = () => {
         setIsSpeaking(false);
       };
-      
+
       utterance.onerror = () => {
         setIsSpeaking(false);
       };
-      
+
       window.speechSynthesis.speak(utterance);
     }
   };
@@ -224,11 +245,15 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold text-gray-900">FarmVoice AI Assistant</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              FarmVoice AI Assistant
+            </h2>
             {isListening && (
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-red-600 font-medium">Listening</span>
+                <span className="text-xs text-red-600 font-medium">
+                  Listening
+                </span>
               </div>
             )}
           </div>
@@ -244,34 +269,49 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-gray-500 mt-8">
-              <p className="text-lg font-medium mb-2">👋 Hello! I'm your FarmVoice assistant</p>
-              <p className="text-sm">Ask me about crops, diseases, market prices, or farming tips.</p>
-              <p className="text-xs mt-2">Click the mic button below to start speaking</p>
+              <p className="text-lg font-medium mb-2">
+                👋 Hello! I'm your FarmVoice assistant
+              </p>
+              <p className="text-sm">
+                Ask me about crops, diseases, market prices, or farming tips.
+              </p>
+              <p className="text-xs mt-2">
+                Click the mic button below to start speaking
+              </p>
             </div>
           )}
-          
+
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${
+                message.type === "user" ? "justify-end" : "justify-start"
+              }`}
             >
               <div
                 className={`max-w-[80%] rounded-lg p-3 ${
-                  message.type === 'user'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-gray-100 text-gray-800'
+                  message.type === "user"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-gray-100 text-gray-800"
                 }`}
               >
                 <p className="text-sm">{message.text}</p>
-                <p className={`text-xs mt-1 ${
-                  message.type === 'user' ? 'text-emerald-100' : 'text-gray-500'
-                }`}>
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <p
+                  className={`text-xs mt-1 ${
+                    message.type === "user"
+                      ? "text-emerald-100"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
               </div>
             </div>
           ))}
-          
+
           {isProcessing && (
             <div className="flex justify-start">
               <div className="bg-gray-100 rounded-lg p-3">
@@ -282,7 +322,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
               </div>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -304,19 +344,20 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
               placeholder="Or type your question here..."
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-gray-700"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                if (e.key === "Enter" && e.currentTarget.value.trim()) {
                   processQuery(e.currentTarget.value);
-                  e.currentTarget.value = '';
+                  e.currentTarget.value = "";
                 }
               }}
               disabled={isListening}
             />
             <button
               onClick={(e) => {
-                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                const input = e.currentTarget
+                  .previousElementSibling as HTMLInputElement;
                 if (input.value.trim()) {
                   processQuery(input.value);
-                  input.value = '';
+                  input.value = "";
                 }
               }}
               disabled={isListening}
@@ -334,7 +375,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
                 isListening
                   ? "bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200"
                   : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200"
-              } text-white ${isListening ? 'animate-pulse' : ''}`}
+              } text-white ${isListening ? "animate-pulse" : ""}`}
               title={isListening ? "Stop listening" : "Start listening"}
             >
               {isListening ? (
@@ -343,7 +384,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
                 <FaMicrophone className="text-xl" />
               )}
             </button>
-            
+
             {isSpeaking && (
               <button
                 onClick={stopSpeaking}
@@ -365,4 +406,3 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
     </div>
   );
 }
-

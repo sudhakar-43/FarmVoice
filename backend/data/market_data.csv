@@ -1,0 +1,17 @@
+state,district,market,commodity,variety,min_price,max_price,modal_price,date
+Andhra Pradesh,Guntur,Guntur,Chilli Red,Dry,12000,15000,13500,2023-10-25
+Andhra Pradesh,Guntur,Tenali,Rice,Common,2200,2500,2350,2023-10-25
+Andhra Pradesh,Krishna,Vijayawada,Banana,Robusta,1000,1500,1200,2023-10-25
+Telangana,Warangal,Warangal,Cotton,Long Staple,6500,7200,6800,2023-10-25
+Telangana,Nalgonda,Nalgonda,Paddy,Common,2060,2100,2080,2023-10-25
+Maharashtra,Pune,Pune,Onion,Red,1500,2500,2000,2023-10-25
+Maharashtra,Nashik,Lasalgaon,Onion,Red,1800,2600,2200,2023-10-25
+Punjab,Ludhiana,Ludhiana,Wheat,Dara,2125,2150,2135,2023-10-25
+Karnataka,Mandya,Mandya,Coconut,Ball,15000,18000,16500,2023-10-25
+Tamil Nadu,Coimbatore,Coimbatore,Tomato,Local,1200,1800,1500,2023-10-25
+Andhra Pradesh,East Godavari,Rajahmundry,Paddy,Common,2100,2200,2150,2023-10-25
+Andhra Pradesh,West Godavari,Eluru,Paddy,Common,2150,2250,2200,2023-10-25
+Andhra Pradesh,Kurnool,Kurnool,Onion,Local,1500,2500,2000,2023-10-25
+Andhra Pradesh,Anantapur,Anantapur,Groundnut,Pod,5500,6500,6000,2023-10-25
+Telangana,Nizamabad,Nizamabad,Turmeric,Finger,6000,7500,6800,2023-10-25
+Telangana,Khammam,Khammam,Chilli Red,Teja,15000,18000,16500,2023-10-25

@@ -1,0 +1,35 @@
+district,state,soil_type,ph,nitrogen,phosphorus,potassium,organic_carbon
+Guntur,Andhra Pradesh,Black Cotton,7.5,Low,Medium,High,0.5
+Krishna,Andhra Pradesh,Alluvial,7.2,Medium,Medium,Medium,0.6
+West Godavari,Andhra Pradesh,Alluvial,6.8,High,High,Medium,0.7
+Prakasam,Andhra Pradesh,Red Sandy,6.5,Low,Low,Medium,0.4
+Warangal,Telangana,Red Loam,6.8,Medium,Medium,Medium,0.5
+Nalgonda,Telangana,Red Sandy,7.0,Low,Medium,Medium,0.4
+Khammam,Telangana,Alluvial,7.1,Medium,High,High,0.6
+Pune,Maharashtra,Black,7.6,Medium,Low,High,0.5
+Nashik,Maharashtra,Red Laterite,6.2,Low,Medium,Medium,0.4
+Nagpur,Maharashtra,Black,7.8,Medium,Medium,High,0.6
+Ludhiana,Punjab,Alluvial,7.4,High,High,High,0.7
+Amritsar,Punjab,Loamy,7.3,Medium,High,High,0.6
+Karnal,Haryana,Alluvial,7.5,Medium,High,Medium,0.5
+Mandya,Karnataka,Red Sandy Loam,6.5,Medium,Medium,Medium,0.5
+Raichur,Karnataka,Black,8.0,Low,Low,High,0.4
+Thanjavur,Tamil Nadu,Alluvial,7.0,High,High,Medium,0.8
+Coimbatore,Tamil Nadu,Red Loam,6.8,Medium,Medium,Medium,0.5
+East Godavari,Andhra Pradesh,Alluvial,7.0,High,High,High,0.75
+Visakhapatnam,Andhra Pradesh,Red Loam,6.5,Medium,Medium,Medium,0.55
+Vizianagaram,Andhra Pradesh,Red Sandy,6.2,Low,Medium,Medium,0.45
+Srikakulam,Andhra Pradesh,Red Sandy Loam,6.4,Medium,Medium,Medium,0.5
+Chittoor,Andhra Pradesh,Red Sandy,6.8,Low,Low,Medium,0.4
+Kadapa,Andhra Pradesh,Red Loam,7.2,Medium,Medium,High,0.5
+Anantapur,Andhra Pradesh,Red Sandy,7.5,Low,Low,Medium,0.3
+Kurnool,Andhra Pradesh,Black Cotton,8.0,Medium,Low,High,0.45
+Nellore,Andhra Pradesh,Sandy Loam,7.0,Medium,Medium,Medium,0.5
+Adilabad,Telangana,Black,7.6,Medium,Medium,High,0.6
+Karimnagar,Telangana,Red Sandy Loam,7.2,Medium,Medium,Medium,0.5
+Medak,Telangana,Red Laterite,6.5,Low,Medium,Medium,0.4
+Nizamabad,Telangana,Black,7.8,Medium,High,High,0.6
+Rangareddy,Telangana,Red Sandy,6.9,Low,Medium,Medium,0.4
+Mahbubnagar,Telangana,Red Sandy Loam,7.1,Low,Low,Medium,0.35
+Hyderabad,Telangana,Red Sandy,7.0,Medium,Medium,Medium,0.5
+Adilabad,Telangana,Black,7.6,Medium,Medium,High,0.6

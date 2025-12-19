@@ -23,9 +23,7 @@ def test_predict_disease(mock_scrape):
         }
     ]
     
-    # We need to override the dependency for this specific endpoint if it's not global
-    # But main.py uses Depends(get_current_user) in the endpoint definition
-    app.dependency_overrides["get_current_user"] = mock_get_current_user
+    # Dependency is already overridden globally at line 11
 
     response = client.post(
         "/api/disease/predict",
