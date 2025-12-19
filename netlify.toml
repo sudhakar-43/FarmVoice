@@ -8,12 +8,12 @@
 [functions]
   directory = "netlify/functions"
 
-[functions.api]
+[functions.py_api]
   included_files = ["backend/**", "!backend/venv/**", "!backend/__pycache__/**", "!backend/.pytest_cache/**", "!backend/models/**"]
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api"
+  to = "/.netlify/functions/py_api"
   status = 200
 
 [[redirects]]
