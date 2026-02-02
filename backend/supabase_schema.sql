@@ -37,6 +37,30 @@ CREATE TABLE IF NOT EXISTS farmer_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Master Crops Table (New)
+CREATE TABLE IF NOT EXISTS crops (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) UNIQUE NOT NULL,
+    category VARCHAR(50),
+    soil_preference JSONB,
+    climate JSONB,
+    temp_min DECIMAL(5,2),
+    temp_max DECIMAL(5,2),
+    rainfall_min DECIMAL(10,2),
+    rainfall_max DECIMAL(10,2),
+    seasons JSONB,
+    growth_days_min INTEGER,
+    growth_days_max INTEGER,
+    water_requirement VARCHAR(50),
+    ph_min DECIMAL(4,2),
+    ph_max DECIMAL(4,2),
+    states JSONB,
+    description TEXT,
+    image_url TEXT,
+    scientific_name VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Selected crops table (crops farmer is currently growing)
 CREATE TABLE IF NOT EXISTS selected_crops (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -115,24 +139,6 @@ CREATE TABLE IF NOT EXISTS crop_recommendations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Ensure pincode and location_data columns exist (for existing tables)
-DO $$ 
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'crop_recommendations' AND column_name = 'pincode'
-    ) THEN
-        ALTER TABLE crop_recommendations ADD COLUMN pincode VARCHAR(10);
-    END IF;
-    
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'crop_recommendations' AND column_name = 'location_data'
-    ) THEN
-        ALTER TABLE crop_recommendations ADD COLUMN location_data JSONB;
-    END IF;
-END $$;
-
 -- Disease diagnoses table
 CREATE TABLE IF NOT EXISTS disease_diagnoses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -150,6 +156,17 @@ CREATE TABLE IF NOT EXISTS voice_queries (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     query TEXT NOT NULL,
     response TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Feedback / Ratings Table (New for Self-Annealing)
+CREATE TABLE IF NOT EXISTS feedback (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    item_type VARCHAR(50), -- 'recommendation', 'diagnosis', 'voice'
+    item_id VARCHAR(255),
+    rating INTEGER, -- 1-5
+    comments TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -178,6 +195,7 @@ CREATE INDEX IF NOT EXISTS idx_crop_recommendations_user_id ON crop_recommendati
 CREATE INDEX IF NOT EXISTS idx_disease_diagnoses_user_id ON disease_diagnoses(user_id);
 CREATE INDEX IF NOT EXISTS idx_voice_queries_user_id ON voice_queries(user_id);
 CREATE INDEX IF NOT EXISTS idx_market_prices_crop ON market_prices(crop);
+CREATE INDEX IF NOT EXISTS idx_crops_name ON crops(name);
 
 -- Disable RLS for now (backend uses custom JWT auth)
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
@@ -190,4 +208,5 @@ ALTER TABLE crop_recommendations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE disease_diagnoses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE voice_queries DISABLE ROW LEVEL SECURITY;
 ALTER TABLE market_prices DISABLE ROW LEVEL SECURITY;
-
+ALTER TABLE crops DISABLE ROW LEVEL SECURITY;
+ALTER TABLE feedback DISABLE ROW LEVEL SECURITY;

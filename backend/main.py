@@ -31,6 +31,8 @@ from voice_service.observability import metrics_collector
 from voice_service.cache_manager import cache_manager
 from voice_service.agent_core import farmvoice_agent # IMPORT NEW AGENT
 
+from voice_service.llm_service import llm_service
+
 # Import new routers
 from routers import home_router, voice_router, market_router, disease_router, features_router, agent_router
 
@@ -115,6 +117,12 @@ class DiseaseDiagnosis(BaseModel):
     description: str
     treatment: List[str]
     prevention: List[str]
+
+class Feedback(BaseModel):
+    item_type: str
+    item_id: str
+    rating: int
+    comments: Optional[str] = None
 
 class VoiceQuery(BaseModel):
     query: str
@@ -387,6 +395,30 @@ async def login(user_data: UserLogin):
 async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     return current_user
 
+@app.post("/api/feedback")
+async def submit_feedback(
+    feedback: Feedback,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Submit feedback for self-annealing (improvement of models).
+    """
+    try:
+        data = {
+            "user_id": current_user["id"],
+            "item_type": feedback.item_type,
+            "item_id": feedback.item_id,
+            "rating": feedback.rating,
+            "comments": feedback.comments,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        supabase.table("feedback").insert(data).execute()
+        return {"status": "success", "message": "Feedback received"}
+    except Exception as e:
+        # Don't fail the request if feedback logging fails
+        print(f"Feedback error: {e}")
+        return {"status": "error", "message": str(e)}
+
 @app.post("/api/crop/recommend", response_model=List[CropRecommendation])
 async def recommend_crops_endpoint(
     request: CropRecommendationRequest,
@@ -467,87 +499,86 @@ async def diagnose_disease(
     request: DiseaseDiagnosisRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    # AI-powered disease diagnosis
-    # In production, use image recognition models
-    
-    symptoms_lower = request.symptoms.lower()
-    
-    # Simple rule-based diagnosis (replace with actual AI model)
-    if any(word in symptoms_lower for word in ["brown", "spot", "blight", "leaf"]):
-        diagnosis = {
-            "name": "Leaf Blight",
-            "severity": "Moderate",
-            "description": "Fungal disease affecting leaves, causing brown spots and wilting. Common in humid conditions.",
-            "treatment": [
-                "Remove and destroy affected leaves immediately",
-                "Apply fungicide (Copper-based or Mancozeb) every 7-10 days",
-                "Improve air circulation by pruning",
-                "Avoid overhead watering",
-                "Apply neem oil as organic alternative"
-            ],
-            "prevention": [
-                "Use disease-resistant varieties",
-                "Practice crop rotation",
-                "Maintain proper spacing between plants",
-                "Monitor regularly for early signs",
-                "Keep field clean and weed-free"
-            ]
-        }
-    elif any(word in symptoms_lower for word in ["white", "powdery", "mildew"]):
-        diagnosis = {
-            "name": "Powdery Mildew",
-            "severity": "Low",
-            "description": "White powdery growth on leaves and stems, common in humid conditions with poor air circulation.",
-            "treatment": [
-                "Apply sulfur-based fungicide",
-                "Increase air circulation",
-                "Reduce humidity if possible",
-                "Remove severely affected parts",
-                "Use baking soda solution (1 tsp per liter water)"
-            ],
-            "prevention": [
-                "Plant in well-ventilated areas",
-                "Avoid overcrowding",
-                "Water at base, not leaves",
-                "Use resistant varieties",
-                "Maintain proper spacing"
-            ]
-        }
-    else:
-        diagnosis = {
-            "name": "General Plant Stress",
-            "severity": "Low",
-            "description": "Symptoms suggest general plant stress. Monitor closely and ensure proper care.",
-            "treatment": [
-                "Ensure adequate watering (not too much or too little)",
-                "Check soil pH and nutrients",
-                "Provide proper sunlight",
-                "Remove any damaged parts",
-                "Apply balanced fertilizer"
-            ],
-            "prevention": [
-                "Regular monitoring",
-                "Proper irrigation schedule",
-                "Balanced nutrition",
-                "Pest control",
-                "Optimal growing conditions"
-            ]
-        }
-    
-    # Save diagnosis to database
+    # AI-powered disease diagnosis using LLM Service
     try:
-        supabase.table("disease_diagnoses").insert({
-            "user_id": current_user["id"],
-            "crop": request.crop,
-            "symptoms": request.symptoms,
-            "diagnosis": diagnosis,
-            "image_url": request.image_url,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
-    except Exception:
-        pass
-    
-    return diagnosis
+        prompt = f"""
+        Diagnose the plant disease based on these symptoms:
+        Crop: {request.crop}
+        Symptoms: {request.symptoms}
+        
+        Provide response in JSON format:
+        {{
+            "name": "Disease Name",
+            "severity": "Low/Moderate/High",
+            "description": "Brief description",
+            "treatment": ["treatment1", "treatment2"],
+            "prevention": ["prevention1", "prevention2"]
+        }}
+        """
+        
+        # Use LLM Service
+        response = await llm_service.generate_response(
+            role="agronomist",
+            context={"system_instruction": "You are an expert plant pathologist."},
+            user_query=prompt
+        )
+        
+        # Parse response (simple parsing, assuming LLM returns JSON-like text)
+        # In production, use structured output parsing
+        import json
+        import re
+        
+        text = response.get("answer", "")
+        # Extract JSON from code block if present
+        json_match = re.search(r"\{.*\}", text, re.DOTALL)
+        if json_match:
+            try:
+                diagnosis_data = json.loads(json_match.group(0))
+            except:
+                diagnosis_data = None
+        else:
+             diagnosis_data = None
+             
+        if not diagnosis_data:
+             # Fallback to Mock Logic if LLM fails to return valid JSON
+             symptoms_lower = request.symptoms.lower()
+             if any(word in symptoms_lower for word in ["brown", "spot", "blight", "leaf"]):
+                diagnosis_data = {
+                    "name": "Leaf Blight",
+                    "severity": "Moderate",
+                    "description": "Fungal disease affecting leaves.",
+                    "treatment": ["Remove affected leaves", "Apply fungicide"],
+                    "prevention": ["Crop rotation", "Proper spacing"]
+                }
+             else:
+                diagnosis_data = {
+                    "name": "General Stress",
+                    "severity": "Low",
+                    "description": "Symptoms suggest general stress.",
+                    "treatment": ["Ensure watering", "Check nutrients"],
+                    "prevention": ["Regular monitoring"]
+                }
+
+        diagnosis = diagnosis_data
+
+        # Save diagnosis to database
+        try:
+            supabase.table("disease_diagnoses").insert({
+                "user_id": current_user["id"],
+                "crop": request.crop,
+                "symptoms": request.symptoms,
+                "diagnosis": diagnosis,
+                "image_url": request.image_url,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        except Exception:
+            pass
+        
+        return diagnosis
+        
+    except Exception as e:
+        print(f"Diagnosis error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to diagnose disease")
 
 @app.get("/api/market/prices")
 async def get_market_prices(
@@ -1555,183 +1586,7 @@ async def voice_websocket(websocket: WebSocket):
     """WebSocket endpoint for real-time voice assistant"""
     await ws_handler.handle_connection(websocket)
 
-# REST API endpoints for voice service
-
-class VoiceChatRequest(BaseModel):
-    text: str
-    lat: Optional[float] = None
-    lon: Optional[float] = None
-    lang: str = "en"
-
-@app.post("/api/voice/chat")
-async def voice_chat(
-    request: VoiceChatRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Text-based voice query endpoint (REST fallback)
-    Compatible with existing /api/voice/query but uses new voice service
-    """
-    try:
-        # Build context
-        context = {
-            "lat": request.lat or 20.5937,
-            "lon": request.lon or 78.9629,
-            "language": request.lang
-        }
-        
-        # Process through voice planner
-        result = await voice_planner.process_query(
-            query=request.text,
-            context=context
-        )
-        
-        return {
-            "speech": result.get("speech", ""),
-            "canvas_spec": result.get("canvas_spec", {}),
-            "ui": result.get("ui", {}),
-            "timings": result.get("timings", {}),
-            "cached": result.get("cached", False),
-            "success": result.get("success", True)
-        }
-        
-    except Exception as e:
-        metrics_collector.log_event("WARN", f"Voice chat error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Voice chat failed: {str(e)}")
-
-class ThemeRequest(BaseModel):
-    theme: str  # "dark" or "light"
-
-@app.post("/api/voice/theme")
-async def change_theme(
-    request: ThemeRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """Change UI theme via voice command"""
-    try:
-        result = await voice_planner.process_theme_command(request.theme)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.post("/api/voice/action")
-async def voice_action(
-    request: dict,
-    current_user: dict = Depends(get_current_user)
-):
-    """Handle canvas action buttons"""
-    action_id = request.get("action_id")
-    
-    if action_id == "save_plan":
-        return {"success": True, "message": "Plan saved successfully"}
-    elif action_id == "refresh_prices":
-        return {"success": True, "message": "Prices refreshed"}
-    else:
-        return {"success": False, "message": "Unknown action"}
-
-# Admin endpoints for voice service configuration
-
-def verify_admin_token(x_admin_token: str = Header(None)):
-    """Verify admin token from header"""
-    if not x_admin_token or x_admin_token != voice_config.admin_token:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid admin token"
-        )
-    return True
-
-@app.get("/api/voice/admin/config")
-async def get_voice_config(admin: bool = Depends(verify_admin_token)):
-    """Get current voice service configuration"""
-    return voice_config.to_dict()
-
-class VoiceModeUpdate(BaseModel):
-    mode: str  # "local", "hybrid", or "cloud"
-
-@app.post("/api/voice/admin/config/mode")
-async def update_voice_mode(
-    request: VoiceModeUpdate,
-    admin: bool = Depends(verify_admin_token)
-):
-    """Update voice service mode"""
-    if request.mode not in ["local", "hybrid", "cloud"]:
-        raise HTTPException(status_code=400, detail="Invalid mode")
-    
-    success = voice_config.update_mode(request.mode, "admin_api")
-    
-    if success:
-        return {
-            "success": True,
-            "mode": voice_config.voice_mode,
-            "persisted": voice_config.allow_mode_persist
-        }
-    else:
-        raise HTTPException(status_code=500, detail="Failed to update mode")
-
-class ThresholdUpdate(BaseModel):
-    warn_ms: Optional[int] = None
-    failsafe_ms: Optional[int] = None
-
-@app.post("/api/voice/admin/config/thresholds")
-async def update_thresholds(
-    request: ThresholdUpdate,
-    admin: bool = Depends(verify_admin_token)
-):
-    """Update performance thresholds"""
-    success = voice_config.update_thresholds(
-        warn_ms=request.warn_ms,
-        failsafe_ms=request.failsafe_ms
-    )
-    
-    if success:
-        return {
-            "success": True,
-            "warn_ms": voice_config.warn_ms,
-            "failsafe_ms": voice_config.failsafe_ms
-        }
-    else:
-        raise HTTPException(status_code=500, detail="Failed to update thresholds")
-
-@app.get("/api/voice/admin/health")
-async def voice_health(admin: bool = Depends(verify_admin_token)):
-    """Get detailed health metrics for voice service"""
-    return metrics_collector.get_health_data()
-
-@app.get("/api/voice/admin/cache/stats")
-async def cache_stats(admin: bool = Depends(verify_admin_token)):
-    """Get cache statistics"""
-    return cache_manager.get_stats()
-
-@app.post("/api/voice/admin/cache/clear")
-async def clear_cache(admin: bool = Depends(verify_admin_token)):
-    """Clear all cache entries"""
-    cache_manager.clear()
-    return {"success": True, "message": "Cache cleared"}
-
-@app.get("/api/voice/admin/sessions")
-async def get_sessions(admin: bool = Depends(verify_admin_token)):
-    """Get active WebSocket sessions"""
-    return {
-        "active_sessions": ws_handler.get_active_sessions_count(),
-        "sessions": ws_handler.get_session_info()
-    }
-
-# Public health endpoint (no auth required)
-@app.get("/api/voice/health")
-async def public_voice_health():
-    """Public health check for voice service"""
-    return {
-        "status": "healthy",
-        "mode": voice_config.voice_mode,
-        "active_sessions": ws_handler.get_active_sessions_count(),
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-
-
-# WebSocket endpoint for voice service
-@app.websocket("/ws/voice")
-async def websocket_endpoint(websocket: WebSocket):
-    await ws_handler.handle_connection(websocket)
+# Note: REST API endpoints for voice service are now handled by voice_router
 
 if __name__ == "__main__":
     import uvicorn
