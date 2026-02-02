@@ -1,0 +1,223 @@
+2026-02-02 20:34:58,017 - voice_service.agent_memory - INFO - Agent Memory initialized
+2026-02-02 20:34:58,240 - voice_service.agent_tools - INFO - Agent Tool Registry initialized
+2026-02-02 20:34:58,240 - voice_service.agent_core - INFO - FarmVoice Agent initialized
+2026-02-02 20:34:58,241 - __main__ - INFO - ================================================================================
+2026-02-02 20:34:58,241 - __main__ - INFO - FarmVoice Agent - Comprehensive Test Suite
+2026-02-02 20:34:58,241 - __main__ - INFO - ================================================================================
+2026-02-02 20:34:58,242 - __main__ - INFO - 
+================================================================================
+2026-02-02 20:34:58,242 - __main__ - INFO - TEST 1/8: Greeting test
+2026-02-02 20:34:58,242 - __main__ - INFO - ================================================================================
+2026-02-02 20:34:58,242 - __main__ - INFO - Query: Hello, how are you?
+2026-02-02 20:34:58,243 - __main__ - INFO - User ID: test_user_1
+2026-02-02 20:34:58,243 - __main__ - INFO - Context: {}
+2026-02-02 20:34:58,243 - voice_service.agent_core - INFO - [TIMING] Agent processing started for user test_user_1
+2026-02-02 20:34:59,564 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=conversation_history&user_id=eq.test_user_1 "HTTP/2 400 Bad Request"
+2026-02-02 20:34:59,565 - voice_service.agent_memory - ERROR - Failed to get conversation history: {'message': 'invalid input syntax for type uuid: "test_user_1"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:34:59,678 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=preferences&user_id=eq.test_user_1 "HTTP/2 400 Bad Request"
+2026-02-02 20:34:59,679 - voice_service.agent_memory - ERROR - Failed to get preferences: {'message': 'invalid input syntax for type uuid: "test_user_1"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:34:59,782 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=context&user_id=eq.test_user_1 "HTTP/2 400 Bad Request"
+2026-02-02 20:34:59,782 - voice_service.agent_memory - ERROR - Failed to get context: {'message': 'invalid input syntax for type uuid: "test_user_1"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:34:59,911 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:34:59,911 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_1"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:34:59,912 - voice_service.agent_core - INFO - Fast intent detected: greeting
+2026-02-02 20:35:00,044 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:00,047 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_1"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:00,048 - voice_service.agent_core - INFO - Response generated: 0 actions, 0 suggestions
+2026-02-02 20:35:00,048 - voice_service.agent_core - INFO - [TIMING] Agent E2E: 1805ms
+2026-02-02 20:35:00,048 - __main__ - INFO - 
+--- RESPONSE ---
+2026-02-02 20:35:00,048 - __main__ - INFO - Success: True
+2026-02-02 20:35:00,048 - __main__ - INFO - Speech: Hello! How can I help you today?
+2026-02-02 20:35:00,048 - __main__ - INFO - Intent: (none)
+2026-02-02 20:35:00,048 - __main__ - INFO - \u2705 TEST PASSED
+2026-02-02 20:35:00,556 - __main__ - INFO - 
+================================================================================
+2026-02-02 20:35:00,556 - __main__ - INFO - TEST 2/8: Crop recommendation without location (should ask for it)
+2026-02-02 20:35:00,556 - __main__ - INFO - ================================================================================
+2026-02-02 20:35:00,556 - __main__ - INFO - Query: What crops should I grow in my area?
+2026-02-02 20:35:00,556 - __main__ - INFO - User ID: test_user_2
+2026-02-02 20:35:00,556 - __main__ - INFO - Context: {}
+2026-02-02 20:35:00,556 - voice_service.agent_core - INFO - [TIMING] Agent processing started for user test_user_2
+2026-02-02 20:35:00,661 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=conversation_history&user_id=eq.test_user_2 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:00,662 - voice_service.agent_memory - ERROR - Failed to get conversation history: {'message': 'invalid input syntax for type uuid: "test_user_2"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:00,765 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=preferences&user_id=eq.test_user_2 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:00,765 - voice_service.agent_memory - ERROR - Failed to get preferences: {'message': 'invalid input syntax for type uuid: "test_user_2"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:00,883 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=context&user_id=eq.test_user_2 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:00,883 - voice_service.agent_memory - ERROR - Failed to get context: {'message': 'invalid input syntax for type uuid: "test_user_2"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:00,999 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:00,999 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_2"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:01,001 - voice_service.agent_core - INFO - Fast intent detected: repair
+2026-02-02 20:35:01,119 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:01,120 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_2"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:01,120 - voice_service.agent_core - INFO - Response generated: 0 actions, 0 suggestions
+2026-02-02 20:35:01,121 - voice_service.agent_core - INFO - [TIMING] Agent E2E: 564ms
+2026-02-02 20:35:01,121 - __main__ - INFO - 
+--- RESPONSE ---
+2026-02-02 20:35:01,121 - __main__ - INFO - Success: True
+2026-02-02 20:35:01,121 - __main__ - INFO - Speech: I said: I didn't say anything yet.
+2026-02-02 20:35:01,121 - __main__ - INFO - Intent: (none)
+2026-02-02 20:35:01,121 - __main__ - INFO - \u2705 TEST PASSED
+2026-02-02 20:35:01,633 - __main__ - INFO - 
+================================================================================
+2026-02-02 20:35:01,633 - __main__ - INFO - TEST 3/8: Crop recommendation for specific location
+2026-02-02 20:35:01,633 - __main__ - INFO - ================================================================================
+2026-02-02 20:35:01,633 - __main__ - INFO - Query: Recommend crops for Karnataka
+2026-02-02 20:35:01,634 - __main__ - INFO - User ID: test_user_3
+2026-02-02 20:35:01,634 - __main__ - INFO - Context: {'location': 'Karnataka'}
+2026-02-02 20:35:01,634 - voice_service.agent_core - INFO - [TIMING] Agent processing started for user test_user_3
+2026-02-02 20:35:01,731 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=conversation_history&user_id=eq.test_user_3 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:01,732 - voice_service.agent_memory - ERROR - Failed to get conversation history: {'message': 'invalid input syntax for type uuid: "test_user_3"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:01,833 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=preferences&user_id=eq.test_user_3 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:01,833 - voice_service.agent_memory - ERROR - Failed to get preferences: {'message': 'invalid input syntax for type uuid: "test_user_3"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:01,941 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=context&user_id=eq.test_user_3 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:01,941 - voice_service.agent_memory - ERROR - Failed to get context: {'message': 'invalid input syntax for type uuid: "test_user_3"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:02,038 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:02,038 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_3"', 'code': '22P02', 'hint': None, 'details': None}
+C:\Users\P.SUDHAKAR BABU\Downloads\farmvoicePro\backend\voice_service\llm_service.py:188: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+2026-02-02 20:35:05,920 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:05,921 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_3"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:05,921 - voice_service.agent_core - INFO - Response generated: 0 actions, 0 suggestions
+2026-02-02 20:35:05,921 - voice_service.agent_core - INFO - [TIMING] Agent E2E: 4288ms
+2026-02-02 20:35:05,922 - __main__ - INFO - 
+--- RESPONSE ---
+2026-02-02 20:35:05,922 - __main__ - INFO - Success: True
+2026-02-02 20:35:05,922 - __main__ - INFO - Speech: Please specify the exact district or region in Karnataka for precise crop recommendations. Karnataka has varied agro-climatic zones.
+2026-02-02 20:35:05,922 - __main__ - INFO - Intent: (none)
+2026-02-02 20:35:05,922 - __main__ - INFO - \u2705 TEST PASSED
+2026-02-02 20:35:06,432 - __main__ - INFO - 
+================================================================================
+2026-02-02 20:35:06,432 - __main__ - INFO - TEST 4/8: Disease diagnosis with symptoms
+2026-02-02 20:35:06,432 - __main__ - INFO - ================================================================================
+2026-02-02 20:35:06,432 - __main__ - INFO - Query: My tomato plants have brown spots on leaves. What disease is this?
+2026-02-02 20:35:06,432 - __main__ - INFO - User ID: test_user_4
+2026-02-02 20:35:06,432 - __main__ - INFO - Context: {'crop': 'tomato'}
+2026-02-02 20:35:06,432 - voice_service.agent_core - INFO - [TIMING] Agent processing started for user test_user_4
+2026-02-02 20:35:06,546 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=conversation_history&user_id=eq.test_user_4 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:06,546 - voice_service.agent_memory - ERROR - Failed to get conversation history: {'message': 'invalid input syntax for type uuid: "test_user_4"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:06,656 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=preferences&user_id=eq.test_user_4 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:06,656 - voice_service.agent_memory - ERROR - Failed to get preferences: {'message': 'invalid input syntax for type uuid: "test_user_4"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:06,752 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=context&user_id=eq.test_user_4 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:06,757 - voice_service.agent_memory - ERROR - Failed to get context: {'message': 'invalid input syntax for type uuid: "test_user_4"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:06,862 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:06,863 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_4"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:15,046 - voice_service.agent_core - INFO - Executing action: read on 
+2026-02-02 20:35:15,046 - voice_service.agent_core - WARNING - Tool not found: read_
+2026-02-02 20:35:15,626 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:15,627 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_4"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:15,627 - voice_service.agent_core - INFO - Response generated: 1 actions, 0 suggestions
+2026-02-02 20:35:15,627 - voice_service.agent_core - INFO - [TIMING] Agent E2E: 9195ms
+2026-02-02 20:35:15,627 - __main__ - INFO - 
+--- RESPONSE ---
+2026-02-02 20:35:15,627 - __main__ - INFO - Success: True
+2026-02-02 20:35:15,627 - __main__ - INFO - Speech: The brown spots on your tomato leaves could indicate Early Blight. Consider applying a fungicide and ensuring good air circulation. Remove affected leaves to prevent spread.
+2026-02-02 20:35:15,627 - __main__ - INFO - Intent: (none)
+2026-02-02 20:35:15,627 - __main__ - INFO - Actions Taken: 1 actions
+2026-02-02 20:35:15,627 - __main__ - INFO -   - read 
+2026-02-02 20:35:15,627 - __main__ - INFO - \u2705 TEST PASSED
+2026-02-02 20:35:16,130 - __main__ - INFO - 
+================================================================================
+2026-02-02 20:35:16,130 - __main__ - INFO - TEST 5/8: Weather query without location
+2026-02-02 20:35:16,130 - __main__ - INFO - ================================================================================
+2026-02-02 20:35:16,130 - __main__ - INFO - Query: What is the weather like today?
+2026-02-02 20:35:16,130 - __main__ - INFO - User ID: test_user_5
+2026-02-02 20:35:16,130 - __main__ - INFO - Context: {}
+2026-02-02 20:35:16,130 - voice_service.agent_core - INFO - [TIMING] Agent processing started for user test_user_5
+2026-02-02 20:35:16,406 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=conversation_history&user_id=eq.test_user_5 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:16,407 - voice_service.agent_memory - ERROR - Failed to get conversation history: {'message': 'invalid input syntax for type uuid: "test_user_5"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:16,613 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=preferences&user_id=eq.test_user_5 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:16,613 - voice_service.agent_memory - ERROR - Failed to get preferences: {'message': 'invalid input syntax for type uuid: "test_user_5"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:16,836 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=context&user_id=eq.test_user_5 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:16,837 - voice_service.agent_memory - ERROR - Failed to get context: {'message': 'invalid input syntax for type uuid: "test_user_5"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:16,980 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:16,980 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_5"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:16,981 - voice_service.agent_core - INFO - Fast intent detected: weather_check
+2026-02-02 20:35:18,544 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:18,545 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_5"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:18,545 - voice_service.agent_core - INFO - Response generated: 0 actions, 0 suggestions
+2026-02-02 20:35:18,545 - voice_service.agent_core - INFO - [TIMING] Agent E2E: 2415ms
+2026-02-02 20:35:18,545 - __main__ - INFO - 
+--- RESPONSE ---
+2026-02-02 20:35:18,545 - __main__ - INFO - Success: True
+2026-02-02 20:35:18,545 - __main__ - INFO - Speech: Please tell me your location (city or district) so I can check the weather for you.
+2026-02-02 20:35:18,545 - __main__ - INFO - Intent: (none)
+2026-02-02 20:35:18,545 - __main__ - INFO - \u2705 TEST PASSED
+2026-02-02 20:35:19,058 - __main__ - INFO - 
+================================================================================
+2026-02-02 20:35:19,058 - __main__ - INFO - TEST 6/8: Market price query
+2026-02-02 20:35:19,058 - __main__ - INFO - ================================================================================
+2026-02-02 20:35:19,058 - __main__ - INFO - Query: What are the current prices for rice in my area?
+2026-02-02 20:35:19,058 - __main__ - INFO - User ID: test_user_6
+2026-02-02 20:35:19,058 - __main__ - INFO - Context: {}
+2026-02-02 20:35:19,058 - voice_service.agent_core - INFO - [TIMING] Agent processing started for user test_user_6
+2026-02-02 20:35:19,153 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=conversation_history&user_id=eq.test_user_6 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:19,154 - voice_service.agent_memory - ERROR - Failed to get conversation history: {'message': 'invalid input syntax for type uuid: "test_user_6"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:19,254 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=preferences&user_id=eq.test_user_6 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:19,254 - voice_service.agent_memory - ERROR - Failed to get preferences: {'message': 'invalid input syntax for type uuid: "test_user_6"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:19,339 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=context&user_id=eq.test_user_6 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:19,340 - voice_service.agent_memory - ERROR - Failed to get context: {'message': 'invalid input syntax for type uuid: "test_user_6"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:19,427 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:19,427 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_6"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:19,428 - voice_service.agent_core - INFO - Fast intent detected: repair
+2026-02-02 20:35:19,520 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:19,520 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_6"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:19,520 - voice_service.agent_core - INFO - Response generated: 0 actions, 0 suggestions
+2026-02-02 20:35:19,520 - voice_service.agent_core - INFO - [TIMING] Agent E2E: 462ms
+2026-02-02 20:35:19,520 - __main__ - INFO - 
+--- RESPONSE ---
+2026-02-02 20:35:19,521 - __main__ - INFO - Success: True
+2026-02-02 20:35:19,521 - __main__ - INFO - Speech: I said: I didn't say anything yet.
+2026-02-02 20:35:19,521 - __main__ - INFO - Intent: (none)
+2026-02-02 20:35:19,521 - __main__ - INFO - \u2705 TEST PASSED
+2026-02-02 20:35:20,035 - __main__ - INFO - 
+================================================================================
+2026-02-02 20:35:20,035 - __main__ - INFO - TEST 7/8: General farming advice
+2026-02-02 20:35:20,035 - __main__ - INFO - ================================================================================
+2026-02-02 20:35:20,035 - __main__ - INFO - Query: How often should I water my rice crop?
+2026-02-02 20:35:20,035 - __main__ - INFO - User ID: test_user_7
+2026-02-02 20:35:20,035 - __main__ - INFO - Context: {'crop': 'rice'}
+2026-02-02 20:35:20,035 - voice_service.agent_core - INFO - [TIMING] Agent processing started for user test_user_7
+2026-02-02 20:35:20,131 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=conversation_history&user_id=eq.test_user_7 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:20,131 - voice_service.agent_memory - ERROR - Failed to get conversation history: {'message': 'invalid input syntax for type uuid: "test_user_7"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:20,232 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=preferences&user_id=eq.test_user_7 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:20,233 - voice_service.agent_memory - ERROR - Failed to get preferences: {'message': 'invalid input syntax for type uuid: "test_user_7"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:20,327 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=context&user_id=eq.test_user_7 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:20,327 - voice_service.agent_memory - ERROR - Failed to get context: {'message': 'invalid input syntax for type uuid: "test_user_7"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:20,413 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:20,414 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_7"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:32,680 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:32,680 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_7"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:32,680 - voice_service.agent_core - INFO - Response generated: 0 actions, 0 suggestions
+2026-02-02 20:35:32,680 - voice_service.agent_core - INFO - [TIMING] Agent E2E: 12646ms
+2026-02-02 20:35:32,680 - __main__ - INFO - 
+--- RESPONSE ---
+2026-02-02 20:35:32,680 - __main__ - INFO - Success: True
+2026-02-02 20:35:32,681 - __main__ - INFO - Speech: To advise on watering your rice, I need to know your location or current weather conditions. Please provide your village, district, or state.
+2026-02-02 20:35:32,681 - __main__ - INFO - Intent: (none)
+2026-02-02 20:35:32,681 - __main__ - INFO - \u2705 TEST PASSED
+2026-02-02 20:35:33,195 - __main__ - INFO - 
+================================================================================
+2026-02-02 20:35:33,195 - __main__ - INFO - TEST 8/8: Complex multi-part question
+2026-02-02 20:35:33,195 - __main__ - INFO - ================================================================================
+2026-02-02 20:35:33,195 - __main__ - INFO - Query: I'm in Maharashtra and want to grow sugarcane. Is it suitable? What about pests?
+2026-02-02 20:35:33,195 - __main__ - INFO - User ID: test_user_8
+2026-02-02 20:35:33,195 - __main__ - INFO - Context: {'location': 'Maharashtra'}
+2026-02-02 20:35:33,195 - voice_service.agent_core - INFO - [TIMING] Agent processing started for user test_user_8
+2026-02-02 20:35:33,291 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=conversation_history&user_id=eq.test_user_8 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:33,293 - voice_service.agent_memory - ERROR - Failed to get conversation history: {'message': 'invalid input syntax for type uuid: "test_user_8"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:33,389 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=preferences&user_id=eq.test_user_8 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:33,389 - voice_service.agent_memory - ERROR - Failed to get preferences: {'message': 'invalid input syntax for type uuid: "test_user_8"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:33,523 - httpx - INFO - HTTP Request: GET https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory?select=context&user_id=eq.test_user_8 "HTTP/2 400 Bad Request"
+2026-02-02 20:35:33,523 - voice_service.agent_memory - ERROR - Failed to get context: {'message': 'invalid input syntax for type uuid: "test_user_8"', 'code': '22P02', 'hint': None, 'details': None}
+2026-02-02 20:35:33,627 - httpx - INFO - HTTP Request: POST https://ecdgvpxnlahxfbeevfqq.supabase.co/rest/v1/agent_memory "HTTP/2 400 Bad Request"
+2026-02-02 20:35:33,627 - voice_service.agent_memory - ERROR - Failed to update long-term memory: {'message': 'invalid input syntax for type uuid: "test_user_8"', 'code': '22P02', 'hint': None, 'details': None}
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1770044998.811395   10868 init.cc:229] grpc_wait_for_shutdown_with_timeout() timed out.
