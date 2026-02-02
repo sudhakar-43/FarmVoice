@@ -8,6 +8,8 @@ import {
   FaStop,
 } from "react-icons/fa";
 import { apiClient } from "@/lib/api";
+import { motion, AnimatePresence } from "framer-motion";
+import InteractiveBackground from "./InteractiveBackground"; // Use local import if in same dir
 
 interface VoiceAssistantProps {
   onClose: () => void;
@@ -20,16 +22,42 @@ interface Message {
 }
 
 export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
-  const [isListening, setIsListening] = useState(false);
+  // State Machine: 'idle' | 'listening' | 'processing' | 'responding' | 'error'
+  const [voiceState, setVoiceState] = useState<"idle" | "listening" | "processing" | "responding" | "error">("idle");
+  
   const [transcript, setTranscript] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const lastTranscriptRef = useRef("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Geolocation State
+  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+  const fetchLocation = () => {
+    if (typeof navigator !== "undefined" && "geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log("Geolocation success:", position.coords);
+          setLocation({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.warn("Geolocation error:", error);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    }
+  };
+
+  // Capture location on mount
+  useEffect(() => {
+    fetchLocation();
+  }, []);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -64,35 +92,27 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
         setTranscript(currentTranscript);
         lastTranscriptRef.current = currentTranscript;
 
-        // Clear existing silence timer
         if (silenceTimer) {
           clearTimeout(silenceTimer);
         }
 
-        // If we have final results and user is still listening, set timer to auto-process
-        if (finalTranscript.trim() && isListening) {
+        if (finalTranscript.trim() && voiceState === "listening") {
           const timer = setTimeout(() => {
             if (lastTranscriptRef.current.trim()) {
               processQuery(lastTranscriptRef.current.trim());
               setTranscript("");
               lastTranscriptRef.current = "";
             }
-          }, 2000); // Auto-process after 2 seconds of silence
+          }, 1500); 
 
           setSilenceTimer(timer);
         }
       };
 
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error:", event.error);
-        if (event.error !== "aborted" && event.error !== "no-speech") {
-          setIsListening(false);
-        }
-      };
-
       recognitionRef.current.onend = () => {
-        if (isListening && !isProcessing) {
-          // Restart if still in listening mode
+        // Automatically restart if we were in listening mode and NOT manually stopped
+        // But if we are processing/responding, we should NOT restart.
+        if (voiceState === "listening") {
           try {
             recognitionRef.current?.start();
           } catch (e) {
@@ -100,309 +120,465 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
           }
         }
       };
+      
+      recognitionRef.current.onerror = (event: any) => {
+        if (event.error !== "aborted" && event.error !== "no-speech") {
+           // Only transition to error/idle if it's a real error
+           console.error("Speech recognition error", event.error);
+           setVoiceState("idle"); 
+        }
+      };
     }
 
     return () => {
-      if (silenceTimer) {
-        clearTimeout(silenceTimer);
-      }
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      if (silenceTimer) clearTimeout(silenceTimer);
+      if (recognitionRef.current) recognitionRef.current.stop();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
     };
-  }, [isListening, isProcessing, silenceTimer]);
+  }, [voiceState, silenceTimer]);
+
+  // Sync recognition with state
+  useEffect(() => {
+     if (voiceState === "listening") {
+        try {
+           recognitionRef.current?.start();
+        } catch(e) { /* ignore */ }
+     } else {
+        recognitionRef.current?.stop();
+     }
+  }, [voiceState]);
 
   const toggleListening = () => {
+    // Retry location if missing
+    if (!location) fetchLocation();
+
     if (!recognitionRef.current) {
-      alert(
-        "Speech recognition is not supported in your browser. Please use Chrome or Edge."
-      );
+      alert("Speech recognition is not supported in your browser.");
       return;
     }
-
-    if (isListening) {
-      // Stop listening
-      if (silenceTimer) {
-        clearTimeout(silenceTimer);
-        setSilenceTimer(null);
-      }
-      recognitionRef.current.stop();
-      setIsListening(false);
-
-      // Process any pending transcript
-      if (transcript.trim()) {
-        processQuery(transcript.trim());
-        setTranscript("");
-      }
+    
+    // User can manually cancel any state to return to IDLE/LISTENING
+    if (voiceState === "listening") {
+       // Stop listening -> Process what we have or Idle
+       if (transcript.trim()) {
+          setVoiceState("processing");
+          processQuery(transcript.trim());
+          setTranscript("");
+       } else {
+          setVoiceState("idle");
+       }
+    } else if (voiceState === "responding") {
+       // Stop speaking and listen
+       window.speechSynthesis.cancel();
+       setVoiceState("listening");
     } else {
-      // Start continuous listening
-      setTranscript("");
-      lastTranscriptRef.current = "";
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (e) {
-        console.error("Failed to start recognition:", e);
-      }
+       // Idle/Error/Processing -> Start Listening
+       // If Processing, we allow interruption!
+       window.speechSynthesis.cancel();
+       setTranscript("");
+       lastTranscriptRef.current = "";
+       setVoiceState("listening");
     }
   };
+
+  // ===========================
+  // VOICE ACK + ASYNC POLLING FLOW
+  // ===========================
+  
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const currentRequestIdRef = useRef<string | null>(null);
+  const pollStartTimeRef = useRef<number>(0);
+  const pollAttemptsRef = useRef<number>(0);
+  const isRequestInFlightRef = useRef<boolean>(false);
+  
+  const POLL_INTERVAL_MS = 1000;  // Poll every 1 second
+  const POLL_TIMEOUT_MS = 90000; // 90 second timeout
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearTimeout(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, []);
+
+
 
   const processQuery = async (query: string) => {
     if (!query.trim()) return;
 
-    // Add user message to history
-    const userMessage: Message = {
-      type: "user",
-      text: query,
-      timestamp: new Date(),
-    };
+    // Chat UI: Add User Message
+    const userMessage: Message = { type: "user", text: query, timestamp: new Date() };
     setMessages((prev) => [...prev, userMessage]);
-
-    setIsProcessing(true);
+    
+    setVoiceState("processing");
 
     try {
-      const response = await apiClient.processVoiceQuery(query);
+      // Step 1: POST to /api/voice/chat - get immediate ACK
+      // Pass captured location if available
+      const response = await apiClient.processVoiceQuery(
+        query, 
+        "en", 
+        location?.lat, 
+        location?.lon
+      );
 
-      if (response.error) {
-        const errorMessage: Message = {
-          type: "assistant",
-          text: "Sorry, I encountered an error. Please try again.",
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-        setIsProcessing(false);
-        return;
-      }
+      if (response.error) throw new Error(response.error);
 
-      if (response.data) {
-        const assistantMessage: Message = {
-          type: "assistant",
-          text: response.data.response,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-        setIsProcessing(false);
-        speakResponse(response.data.response);
+      if ((response as any).data) {
+        const data = (response as any).data;
+        
+        // Handle ACK mode - DO NOT SPEAK ACK. Just start polling.
+        if (data.mode === "ack" && data.request_id) {
+           // Wait silently for the real answer.
+           // Start polling for final response
+           pollStartTimeRef.current = Date.now();
+           currentRequestIdRef.current = data.request_id;
+           startPolling(data.request_id);
+          
+        } else {
+          // Legacy/direct response
+          handleFinalResponse(data);
+        }
       }
-    } catch (err) {
-      const errorMessage: Message = {
-        type: "assistant",
-        text: "Sorry, I couldn't process your query. Please try again.",
-        timestamp: new Date(),
-      };
+    } catch (err: any) {
+      console.error("Voice query error:", err);
+      let errorSpeech = "I encountered a network configuration error. Please try again.";
+      
+      if (err.message && (err.message.includes("Session expired") || err.message.includes("log in"))) {
+          errorSpeech = "Your session has expired. Please log in again to continue.";
+      }
+      
+      const errorMessage: Message = { type: "assistant", text: errorSpeech, timestamp: new Date() };
       setMessages((prev) => [...prev, errorMessage]);
-      setIsProcessing(false);
+      setVoiceState("error");
+      speakResponse(errorSpeech);
     }
   };
 
-  const speakResponse = (text: string) => {
-    if ("speechSynthesis" in window) {
-      setIsSpeaking(true);
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 1;
+  const startPolling = (requestId: string) => {
+    // Clear any existing polling
+    if (pollingRef.current) {
+      clearTimeout(pollingRef.current);
+      pollingRef.current = null;
+    }
+    
+    // Reset state for new poll cycle
+    pollAttemptsRef.current = 0;
+    isRequestInFlightRef.current = false;
 
-      // Select a female voice if available
-      const voices = window.speechSynthesis.getVoices();
-      const femaleVoice = voices.find(
-        (voice) =>
-          voice.name.includes("Female") ||
-          voice.name.includes("Zira") ||
-          voice.name.includes("Google US English") ||
-          voice.name.includes("Samantha")
-      );
-
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
+    const poll = async () => {
+      // 1. Safety Checks
+      if (currentRequestIdRef.current !== requestId) return; // Stale request
+      
+      if (isRequestInFlightRef.current) {
+         // Previous poll still running, skip this tick but schedule next
+         pollingRef.current = setTimeout(poll, POLL_INTERVAL_MS);
+         return;
       }
 
-      utterance.onend = () => {
-        setIsSpeaking(false);
-      };
+      // Check timeout / max attempts (e.g. 60 attempts = 60 seconds)
+      if (pollAttemptsRef.current > 60) {
+        console.warn("Polling timeout reached (max attempts)");
+        const timeoutSpeech = "I'm searching for that information, but it's taking a bit longer than usual.";
+        const timeoutMessage: Message = {
+          type: "assistant",
+          text: timeoutSpeech,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, timeoutMessage]);
+        
+        // Timeout -> Error state
+        setVoiceState("error");
+        speakResponse(timeoutSpeech);
+        currentRequestIdRef.current = null;
+        return;
+      }
 
-      utterance.onerror = () => {
-        setIsSpeaking(false);
-      };
+      isRequestInFlightRef.current = true;
+      pollAttemptsRef.current++;
 
-      window.speechSynthesis.speak(utterance);
+      try {
+        const response = await apiClient.request<any>(
+          `/api/voice/chat/result/${requestId}`
+        );
+
+        // Ensure we are still relevant after await
+        if (currentRequestIdRef.current !== requestId) return;
+
+        if (response.error) {
+           console.warn(`Polling error (attempt ${pollAttemptsRef.current}):`, response.error);
+           // If 404, maybe it's gone? For now, retry a few times then fail? 
+           // We'll just retry for now until timeout.
+           pollingRef.current = setTimeout(poll, POLL_INTERVAL_MS);
+           return;
+        }
+
+        if (response.data) {
+          const data = response.data;
+          
+          if (data.status === "completed" || data.mode === "final") {
+             // SUCCESS: Stop polling
+             currentRequestIdRef.current = null;
+             handleFinalResponse(data);
+             return;
+          } 
+          
+          if (data.status === "error" || data.error) {
+             // ERROR: Stop polling
+             currentRequestIdRef.current = null;
+             console.error("Backend reported error:", data.error);
+             speakResponse("I encountered a problem processing that.");
+             setVoiceState("error");
+             return;
+          }
+
+          // If "processing", continue loop
+          // Fallthrough to schedule next poll
+        }
+        
+        // Schedule next poll
+        pollingRef.current = setTimeout(poll, POLL_INTERVAL_MS);
+
+      } catch (err) {
+        console.error("Polling network error:", err);
+        // Retry on network error
+        pollingRef.current = setTimeout(poll, POLL_INTERVAL_MS);
+      } finally {
+        isRequestInFlightRef.current = false;
+      }
+    };
+
+    // Start immediate first poll
+    poll();
+  };
+
+  const handleFinalResponse = (data: any) => {
+    // Handle UI updates
+    if (data.ui_updates) {
+      if (data.ui_updates.refresh_tasks) 
+        window.dispatchEvent(new CustomEvent('farmvoice:refresh_tasks'));
+      if (data.ui_updates.refresh_crops) 
+        window.dispatchEvent(new CustomEvent('farmvoice:refresh_crops'));
     }
+
+    // Valid final response
+    const speechText = data.speech || data.response || "Here is what I found.";
+    
+    // Add final message
+    const assistantMessage: Message = {
+       type: "assistant",
+       text: speechText,
+       timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, assistantMessage]);
+    
+    // Transition to RESPONDING -> TTS
+    setVoiceState("responding");
+    speakResponse(speechText);
+  };
+
+  // ===========================
+  // TTS - Text to Speech
+  // ===========================
+  
+  const speakResponse = (text: string) => {
+    if (!("speechSynthesis" in window)) return;
+    
+    // CRITICAL: Cancel any ongoing speech to prevent overlap
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95; 
+    utterance.pitch = 1.0;
+    utterance.volume = 1;
+
+    // Get voices and select appropriate one
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(
+      (voice) =>
+        voice.name.includes("Google US English") ||
+        voice.name.includes("Samantha") ||
+        voice.name.includes("Zira") ||
+        voice.name.includes("Female")
+    ) || voices.find(v => v.lang.startsWith("en"));
+
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    utterance.onstart = () => {
+        console.log("Final speech started");
+        // Ensure state is responding
+        setVoiceState("responding");
+    };
+
+    utterance.onend = () => {
+        console.log("Final speech ended — voice idle");
+        setVoiceState("idle");
+    };
+
+    utterance.onerror = (e) => {
+        console.error("TTS Error", e);
+        setVoiceState("idle");
+    };
+
+    window.speechSynthesis.speak(utterance);
   };
 
   const stopSpeaking = () => {
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg border border-gray-200 shadow-lg max-w-2xl w-full h-[600px] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold text-gray-900">
-              FarmVoice AI Assistant
-            </h2>
-            {isListening && (
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-red-600 font-medium">
-                  Listening
-                </span>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <FaTimes className="text-xl" />
-          </button>
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center font-sans text-white overflow-hidden"
+    >
+      <InteractiveBackground />
+      
+      {/* Top Bar */}
+      <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-10">
+        <div className="flex items-center gap-2">
+           {/* Optional Logo or status */}
         </div>
+        <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+          <FaTimes className="text-2xl text-white/80" />
+        </button>
+      </div>
 
-        {/* Conversation History */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.length === 0 && (
-            <div className="text-center text-gray-500 mt-8">
-              <p className="text-lg font-medium mb-2">
-                👋 Hello! I'm your FarmVoice assistant
-              </p>
-              <p className="text-sm">
-                Ask me about crops, diseases, market prices, or farming tips.
-              </p>
-              <p className="text-xs mt-2">
-                Click the mic button below to start speaking
-              </p>
-            </div>
-          )}
-
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${
-                message.type === "user" ? "justify-end" : "justify-start"
-              }`}
+      {/* Main Content Area - Minimalistic */}
+      <div className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center p-8 relative z-0">
+        <AnimatePresence mode="wait">
+          {messages.length === 0 && !transcript ? (
+            <motion.div 
+              key="intro"
+              initial={{ y: 20, opacity: 0 }} 
+              animate={{ y: 0, opacity: 1 }} 
+              exit={{ y: -20, opacity: 0 }}
+              className="text-center space-y-6"
             >
-              <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.type === "user"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                <p className="text-sm">{message.text}</p>
-                <p
-                  className={`text-xs mt-1 ${
-                    message.type === "user"
-                      ? "text-emerald-100"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            </div>
-          ))}
+              <h1 className="text-5xl md:text-7xl font-light tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+                Good Evening, krish
+              </h1>
+              <p className="text-xl text-emerald-400/80 font-light">
+                How can I help you today?
+                {location && (
+                   <span className="ml-3 text-xs bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-full border border-emerald-500/30">
+                     📍 Location Active
+                   </span>
+                )}
+              </p>
+            </motion.div>
+          ) : (
+            <div className="w-full space-y-8 flex flex-col items-center">
+              {/* Show only the latest conversation context for minimalism, or full history with scroll if needed.
+                  The user asked for "minimalistic way", so let's focus on the active interaction. 
+              */}
+              <div className="flex-1 w-full overflow-y-auto max-h-[60vh] space-y-6 scrollbar-hide">
+                 {messages.map((msg, idx) => (
+                   <motion.div 
+                     key={idx}
+                     initial={{ opacity: 0, y: 20 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     className={`flex w-full ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                   >
+                     <div className={`max-w-2xl text-2xl md:text-3xl font-light leading-relaxed ${
+                       msg.type === 'user' ? 'text-white/90 text-right' : 'text-emerald-300 text-left'
+                     }`}>
+                       {msg.text}
+                     </div>
+                   </motion.div>
+                 ))}
+                 
+                 {/* Live Transcript */}
+                 {voiceState === "listening" && transcript && (
+                    <motion.div 
+                      key="transcript"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex w-full justify-end"
+                    >
+                      <p className="max-w-2xl text-2xl md:text-3xl font-light text-white/50 text-right italic">
+                        {transcript}
+                      </p>
+                    </motion.div>
+                 )}
 
-          {isProcessing && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-600 border-t-transparent"></div>
-                  <span className="text-sm text-gray-600">Thinking...</span>
-                </div>
+                 {/* Processing Indicator */}
+                 {voiceState === "processing" && (
+                   <motion.div 
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 1 }}
+                     className="flex w-full justify-start"
+                   >
+                     <div className="flex gap-2 items-center">
+                       <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                       <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                       <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                     </div>
+                   </motion.div>
+                 )}
+                 <div ref={messagesEndRef} />
               </div>
             </div>
           )}
+        </AnimatePresence>
+      </div>
 
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Current Transcript Display */}
-        {isListening && transcript && (
-          <div className="px-6 py-3 bg-blue-50 border-t border-blue-100">
-            <p className="text-sm text-blue-900">
-              <span className="font-medium">You're saying: </span>
-              {transcript}
-            </p>
-          </div>
-        )}
-
-        {/* Input Area */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50">
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              placeholder="Or type your question here..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-gray-700"
+      {/* Input / Control Area */}
+      <div className="w-full max-w-2xl p-8 z-10">
+        {/* Minimal Input */}
+        <div className="relative mb-12 group">
+            <input 
+              type="text" 
+              placeholder="Ask anything..." 
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-lg text-white placeholder-white/20 focus:outline-none focus:bg-white/10 focus:border-emerald-500/50 transition-all backdrop-blur-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && e.currentTarget.value.trim()) {
                   processQuery(e.currentTarget.value);
                   e.currentTarget.value = "";
                 }
               }}
-              disabled={isListening}
             />
-            <button
-              onClick={(e) => {
-                const input = e.currentTarget
-                  .previousElementSibling as HTMLInputElement;
-                if (input.value.trim()) {
-                  processQuery(input.value);
-                  input.value = "";
-                }
-              }}
-              disabled={isListening}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Send
-            </button>
-          </div>
+            <div className="absolute inset-0 -z-10 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        </div>
 
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-4">
-            <button
-              onClick={toggleListening}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 ${
-                isListening
-                  ? "bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200"
-                  : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200"
-              } text-white ${isListening ? "animate-pulse" : ""}`}
-              title={isListening ? "Stop listening" : "Start listening"}
-            >
-              {isListening ? (
-                <FaMicrophoneSlash className="text-xl" />
-              ) : (
-                <FaMicrophone className="text-xl" />
-              )}
-            </button>
+        {/* Mic Control */}
+        <div className="flex justify-center items-center gap-6">
+           <motion.button
+             whileHover={{ scale: 1.1 }}
+             whileTap={{ scale: 0.95 }}
+             onClick={toggleListening}
+             className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all shadow-[0_0_30px_rgba(0,0,0,0.3)] ${
+               voiceState === "listening" 
+                 ? "bg-red-500/90 text-white animate-pulse shadow-[0_0_50px_rgba(239,68,68,0.4)]" 
+                 : "bg-white text-emerald-900 hover:bg-emerald-50"
+             }`}
+           >
+             {voiceState === "listening" ? <FaMicrophoneSlash /> : <FaMicrophone />}
+           </motion.button>
 
-            {isSpeaking && (
-              <button
-                onClick={stopSpeaking}
-                className="w-14 h-14 rounded-full flex items-center justify-center bg-orange-600 hover:bg-orange-700 text-white shadow-lg transition-all duration-200"
-                title="Stop speaking"
-              >
-                <FaStop className="text-lg" />
-              </button>
-            )}
-          </div>
-
-          <p className="text-center text-xs text-gray-500 mt-2">
-            {isListening
-              ? "🎤 Listening... I'll auto-process after 2 seconds of silence"
-              : "Click the microphone to start speaking"}
-          </p>
+           {voiceState === "responding" && (
+             <motion.button
+               initial={{ scale: 0, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               exit={{ scale: 0, opacity: 0 }}
+               onClick={stopSpeaking}
+               className="w-14 h-14 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all border border-white/10"
+             >
+               <FaStop className="text-lg" />
+             </motion.button>
+           )}
         </div>
       </div>
-    </div>
+
+    </motion.div>
   );
 }

@@ -1,3 +1,9 @@
+import pyparsing
+# Monkey patch for older libs using pyparsing.DelimitedList with pyparsing 3.x
+if not hasattr(pyparsing, 'DelimitedList'):
+    if hasattr(pyparsing, 'delimited_list'):
+        pyparsing.DelimitedList = pyparsing.delimited_list
+
 from fastapi import FastAPI, HTTPException, Depends, status, WebSocket, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -5,6 +11,11 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 import os
 from dotenv import load_dotenv
+
+# Load env vars primarily
+load_dotenv(override=True)
+print(f"MAIN DEBUG: JWT_SECRET_KEY loaded: {os.getenv('JWT_SECRET_KEY', 'Start')[:5]}...")
+
 from supabase import create_client, Client
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
@@ -16,20 +27,19 @@ from notification_service import generate_all_notifications
 # Import voice service modules
 from voice_service.config import config as voice_config
 from voice_service.websocket_handler import ws_handler
-from voice_service.planner import voice_planner
 from voice_service.observability import metrics_collector
 from voice_service.cache_manager import cache_manager
+from voice_service.agent_core import farmvoice_agent # IMPORT NEW AGENT
 
 # Import new routers
-from routers import home_router, voice_router, market_router, disease_router, features_router
-
-load_dotenv()
+from routers import home_router, voice_router, market_router, disease_router, features_router, agent_router
 
 app = FastAPI(title="FarmVoice API", version="1.0.0")
 
 # Include new routers
 app.include_router(home_router.router)
 app.include_router(voice_router.router)
+app.include_router(agent_router.router)  # FarmVoice Agent endpoints
 app.include_router(market_router.router)
 app.include_router(disease_router.router)
 app.include_router(features_router.router)
@@ -52,12 +62,17 @@ supabase_service_key = os.getenv("SUPABASE_SERVICE_KEY")
 if not supabase_url or not supabase_key:
     raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
 
-supabase: Client = create_client(supabase_url, supabase_key)
+# Prioritize connection with service key for backend operations
+key_to_use = supabase_service_key if supabase_service_key else supabase_key
+if not key_to_use:
+    raise ValueError("No Supabase key found (SUPABASE_KEY or SUPABASE_SERVICE_KEY must be set)")
+
+supabase: Client = create_client(supabase_url, key_to_use)
 
 # JWT Configuration
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours for dev
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -65,12 +80,12 @@ security = HTTPBearer()
 
 # Pydantic Models
 class UserRegister(BaseModel):
-    email: EmailStr
+    phone_number: str
     password: str
     name: Optional[str] = None
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    phone_number: str
     password: str
 
 class Token(BaseModel):
@@ -103,11 +118,13 @@ class DiseaseDiagnosis(BaseModel):
 
 class VoiceQuery(BaseModel):
     query: str
-    language: Optional[str] = "en"  # en, te (Telugu), hi (Hindi)
+    language: Optional[str] = "en"  # en, te, ta, kn, ml, hi
 
 class VoiceResponse(BaseModel):
     response: str
     suggestions: Optional[List[str]] = None
+    actions_taken: Optional[List[dict]] = None
+    ui_updates: Optional[dict] = None
 
 class FarmerProfile(BaseModel):
     full_name: Optional[str] = None
@@ -219,15 +236,15 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     try:
         token = credentials.credentials
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        phone_number: str = payload.get("sub")
+        if phone_number is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
     
     # Get user from Supabase
     try:
-        response = supabase.table("users").select("*").eq("email", email).execute()
+        response = supabase.table("users").select("*").eq("phone_number", phone_number).execute()
         if not response.data:
             raise credentials_exception
         return response.data[0]
@@ -261,9 +278,9 @@ async def register(user_data: UserRegister):
             )
         
         # Check if user exists
-        existing = supabase.table("users").select("*").eq("email", user_data.email).execute()
+        existing = supabase.table("users").select("*").eq("phone_number", user_data.phone_number).execute()
         if existing.data:
-            raise HTTPException(status_code=400, detail="Email already registered")
+            raise HTTPException(status_code=400, detail="Phone number already registered")
         
         # Hash password
         try:
@@ -273,9 +290,9 @@ async def register(user_data: UserRegister):
         
         # Insert user into Supabase
         user_record = {
-            "email": user_data.email,
+            "phone_number": user_data.phone_number,
             "password_hash": hashed_password,
-            "name": user_data.name or user_data.email.split("@")[0],
+            "name": user_data.name or f"Farmer {user_data.phone_number[-4:]}",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -289,7 +306,7 @@ async def register(user_data: UserRegister):
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user["email"]}, expires_delta=access_token_expires
+            data={"sub": user["phone_number"]}, expires_delta=access_token_expires
         )
         
         return {
@@ -297,7 +314,8 @@ async def register(user_data: UserRegister):
             "token_type": "bearer",
             "user": {
                 "id": user["id"],
-                "email": user["email"],
+                "email": user.get("email", ""), # Compatibility
+                "phone_number": user["phone_number"],
                 "name": user["name"]
             }
         }
@@ -317,22 +335,37 @@ async def login(user_data: UserLogin):
                 detail="Password is too long. Please use a password with less than 72 characters."
             )
         
-        # Get user from Supabase
-        response = supabase.table("users").select("*").eq("email", user_data.email).execute()
+        # Determine if input is phone or name
+        input_identifier = user_data.phone_number.strip()
+        is_phone = input_identifier.replace('+', '').isdigit() and len(input_identifier) >= 10
+
+        user = None
         
-        if not response.data:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+        if is_phone:
+            # Search by phone number
+            response = supabase.table("users").select("*").eq("phone_number", input_identifier).execute()
+            if response.data:
+                user = response.data[0]
+        else:
+            # Search by name (case-insensitive)
+            # using ilike for case-insensitive matching
+            response = supabase.table("users").select("*").ilike("name", input_identifier).execute()
+            if response.data:
+                if len(response.data) > 1:
+                     raise HTTPException(status_code=400, detail="Multiple users found with this name. Please login with Phone Number.")
+                user = response.data[0]
         
-        user = response.data[0]
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid name/phone number or password")
         
         # Verify password
         if not verify_password(user_data.password, user.get("password_hash", "")):
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Invalid name/phone number or password")
         
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user["email"]}, expires_delta=access_token_expires
+            data={"sub": user["phone_number"]}, expires_delta=access_token_expires
         )
         
         return {
@@ -340,7 +373,8 @@ async def login(user_data: UserLogin):
             "token_type": "bearer",
             "user": {
                 "id": user["id"],
-                "email": user["email"],
+                "email": user.get("email", ""), # Compatibility
+                "phone_number": user["phone_number"],
                 "name": user["name"]
             }
         }
@@ -354,67 +388,18 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     return current_user
 
 @app.post("/api/crop/recommend", response_model=List[CropRecommendation])
-async def recommend_crops(
+async def recommend_crops_endpoint(
     request: CropRecommendationRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    # AI-powered crop recommendation logic
-    # This is a simplified version - in production, use ML models
+    # Use the dynamic crop recommender
+    location_data = {
+        "soil_type": request.soil_type,
+        "climate": request.climate,
+        "weather": {"season": request.season}
+    }
     
-    recommendations = []
-    
-    # Simple rule-based recommendations (replace with actual AI model)
-    if request.soil_type == "loamy" and request.climate in ["tropical", "subtropical"]:
-        recommendations = [
-            {
-                "name": "Rice",
-                "suitability": 95,
-                "description": "Excellent for your conditions. High yield potential with proper water management.",
-                "benefits": ["High market demand", "Good water tolerance", "Stable prices", "Multiple varieties available"]
-            },
-            {
-                "name": "Wheat",
-                "suitability": 88,
-                "description": "Well-suited for your region. Good profit margins and export potential.",
-                "benefits": ["High nutritional value", "Multiple harvests", "Export potential", "Storage friendly"]
-            },
-            {
-                "name": "Corn",
-                "suitability": 82,
-                "description": "Suitable with proper irrigation. Growing market demand for feed and industrial use.",
-                "benefits": ["Versatile crop", "Animal feed market", "Industrial uses", "Fast growth"]
-            }
-        ]
-    elif request.soil_type == "sandy" and request.climate == "arid":
-        recommendations = [
-            {
-                "name": "Millet",
-                "suitability": 90,
-                "description": "Drought-resistant crop perfect for arid conditions.",
-                "benefits": ["Drought resistant", "Low water requirement", "Nutritious", "Fast growing"]
-            },
-            {
-                "name": "Sorghum",
-                "suitability": 85,
-                "description": "Excellent for dry climates with minimal water needs.",
-                "benefits": ["Drought tolerant", "Multiple uses", "Good yield", "Low maintenance"]
-            }
-        ]
-    else:
-        recommendations = [
-            {
-                "name": "Soybean",
-                "suitability": 75,
-                "description": "Moderately suitable. Requires careful management and proper soil preparation.",
-                "benefits": ["Protein-rich", "Soil improvement", "Export market", "Crop rotation friendly"]
-            },
-            {
-                "name": "Cotton",
-                "suitability": 70,
-                "description": "Suitable with proper irrigation and pest management.",
-                "benefits": ["High value", "Industrial demand", "Export potential", "Long shelf life"]
-            }
-        ]
+    recommendations = get_crop_recommendations(location_data, supabase_client=supabase, limit=10)
     
     # Save recommendation to database
     try:
@@ -430,6 +415,52 @@ async def recommend_crops(
         pass  # Don't fail if logging fails
     
     return recommendations
+
+@app.post("/api/crop/recommend-by-pincode")
+async def recommend_crops_by_pincode(
+    request: PincodeRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get crop recommendations based on Pincode.
+    Resolves pincode to location -> gets weather/soil -> recommends crops.
+    """
+    try:
+        # 1. Resolve Pincode
+        pincode_data = await get_pincode_data(request.pincode)
+        
+        # 2. Extract context
+        location_data = {
+            "soil_type": pincode_data.get("soil_type", "Loamy"),
+            "climate": pincode_data.get("climate", "Tropical"),
+            "weather": pincode_data.get("weather", {}),
+            "display_name": pincode_data.get("display_name", request.pincode)
+        }
+        
+        # 3. Get Recommendations
+        recommendations = get_crop_recommendations(location_data, supabase_client=supabase, limit=10)
+        
+        # 4. Return comprehensive response
+        return {
+            "pincode": request.pincode,
+            "location": {
+                "district": pincode_data.get("district"),
+                "state": pincode_data.get("state"),
+                "city": pincode_data.get("city"),
+                "display_name": pincode_data.get("display_name")
+            },
+            "soil": {
+                "type": pincode_data.get("soil_type"),
+                "details": pincode_data.get("soil_details")
+            },
+            "climate": pincode_data.get("climate"),
+            "weather": pincode_data.get("weather"),
+            "recommendations": recommendations,
+            "data_source": pincode_data.get("source", "Unknown")
+        }
+    except Exception as e:
+        print(f"Error in recommend_by_pincode: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/disease/diagnose", response_model=DiseaseDiagnosis)
 async def diagnose_disease(
@@ -562,38 +593,60 @@ async def get_market_prices(
 async def get_current_weather_endpoint(
     lat: Optional[float] = None, 
     lon: Optional[float] = None,
+    pincode: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     """
     Get real-time weather data for the dashboard.
-    Scrapes data based on user location.
+    Priority: 1) Query param pincode, 2) User profile pincode, 3) Browser GPS coords, 4) Profile coords, 5) Default
     """
     try:
         # Default fallback
         latitude = 20.5937
         longitude = 78.9629
+        use_pincode = False
+        location_name = "India"
         
-        # 1. Try to use provided coordinates
-        if lat and lon:
-            latitude = lat
-            longitude = lon
-        else:
-            # 2. Try to get from user profile
+        # 0. FIRST check if pincode was provided as query parameter
+        if pincode and len(pincode) == 6 and pincode.isdigit():
+            try:
+                pincode_data = await get_pincode_data(pincode)
+                if pincode_data:
+                    latitude = pincode_data.get("latitude", latitude)
+                    longitude = pincode_data.get("longitude", longitude)
+                    location_name = pincode_data.get("district", pincode_data.get("city", "Your Location"))
+                    use_pincode = True
+                    print(f"Using query param pincode {pincode} for location: {latitude}, {longitude}")
+            except Exception as e:
+                print(f"Error with query pincode: {e}")
+        
+        # 1. If no query pincode, try user profile pincode
+        if not use_pincode:
             try:
                 profile_res = supabase.table("farmer_profiles").select("*").eq("user_id", current_user["id"]).execute()
                 if profile_res.data:
                     profile = profile_res.data[0]
-                    if profile.get("latitude") and profile.get("longitude"):
-                        latitude = profile.get("latitude")
-                        longitude = profile.get("longitude")
-                    elif profile.get("pincode"):
-                        # Get coords from pincode if no direct coords
+                    if profile.get("pincode"):
+                        # Use pincode for accurate location (better than browser IP-based GPS)
                         pincode_data = await get_pincode_data(profile.get("pincode"))
                         if pincode_data:
                             latitude = pincode_data.get("latitude", latitude)
                             longitude = pincode_data.get("longitude", longitude)
+                            location_name = pincode_data.get("district", pincode_data.get("city", "Your Location"))
+                            use_pincode = True
+                            print(f"Using profile pincode {profile.get('pincode')} for location: {latitude}, {longitude}")
+                    elif profile.get("latitude") and profile.get("longitude"):
+                        latitude = profile.get("latitude")
+                        longitude = profile.get("longitude")
+                        print(f"Using profile coords: {latitude}, {longitude}")
             except Exception as e:
                 print(f"Error fetching profile for weather: {e}")
+        
+        # 2. Only use provided browser GPS coordinates if no pincode was found
+        if not use_pincode and lat and lon:
+            latitude = lat
+            longitude = lon
+            print(f"Using browser GPS coords: {latitude}, {longitude}")
 
         # 3. Get comprehensive location & weather data
         # We use get_location_data_from_coords because it gives us the location name (City/Village) AND weather
@@ -605,16 +658,41 @@ async def get_current_weather_endpoint(
         forecast = weather.get("forecast", {})
         
         # Extract location name suitable for display
-        location_name = "India"
-        if data.get("city") and data.get("city") != "Unknown":
-            location_name = data.get("city")
-        elif data.get("district") and data.get("district") != "Unknown":
-            location_name = data.get("district")
-        elif data.get("state") and data.get("state") != "Unknown":
-            location_name = data.get("state")
-        elif data.get("display_name"):
-            # Simplify display name (first part)
-            location_name = data.get("display_name").split(",")[0]
+        if not use_pincode:
+            location_name = "India"
+            if data.get("city") and data.get("city") != "Unknown":
+                location_name = data.get("city")
+            elif data.get("district") and data.get("district") != "Unknown":
+                location_name = data.get("district")
+            elif data.get("state") and data.get("state") != "Unknown":
+                location_name = data.get("state")
+            elif data.get("display_name"):
+                # Simplify display name (first part)
+                location_name = data.get("display_name").split(",")[0]
+            
+        # Generate farmer-centric insights based on weather data
+        insights = []
+        wind_speed = current.get("wind_speed", 0) or weather.get("current", {}).get("wind_kph", 0)
+        humidity = current.get("humidity", 0)
+        rain_prob = 0
+        
+        # Check daily forecast for rain
+        daily_forecasts = weather.get("forecast", [])
+        if daily_forecasts and len(daily_forecasts) > 0:
+            rain_prob = daily_forecasts[0].get("rain_probability", 0) or 0
+        
+        if rain_prob > 50:
+            insights.append({"type": "rain", "message": f"Rain expected today ({rain_prob}% chance) - plan irrigation accordingly"})
+        elif rain_prob == 0:
+            insights.append({"type": "dry", "message": "No rain expected in the next 24 hours"})
+        
+        if wind_speed > 15:
+            insights.append({"type": "wind", "message": f"Strong winds ({wind_speed} km/h) - avoid pesticide/herbicide spraying"})
+        elif wind_speed < 8:
+            insights.append({"type": "spray", "message": "Low wind - good conditions for spraying"})
+            
+        if humidity < 40 and current.get("temperature", 25) > 30:
+            insights.append({"type": "irrigation", "message": "High temperature and low humidity - increase irrigation"})
             
         return {
             "temperature": current.get("temperature", 25),
@@ -623,7 +701,14 @@ async def get_current_weather_endpoint(
             "wind_speed": current.get("wind_speed", 10),
             "location": location_name,
             "high": forecast.get("max_temp", 30),
-            "low": forecast.get("min_temp", 20)
+            "low": forecast.get("min_temp", 20),
+            "sunrise": weather.get("sunrise", "06:00"),
+            "sunset": weather.get("sunset", "18:00"),
+            "is_night": weather.get("is_night", False),
+            "daily_forecast": weather.get("daily_forecast", weather.get("forecast", [])),
+            "hourly_forecast": weather.get("hourly_forecast", []),
+            "insights": insights,
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:
@@ -631,198 +716,23 @@ async def get_current_weather_endpoint(
         # Return safe fallback
         return {
             "temperature": 25,
-            "condition": "Sunny", 
+            "condition": "Clear", 
             "humidity": 50, 
             "wind_speed": 5, 
             "location": "Farm Location", 
             "high": 30, 
-            "low": 20
+            "low": 20,
+            "sunrise": "06:00",
+            "sunset": "18:00",
+            "is_night": False,
+            "insights": [],
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
 
 
-from fastapi import BackgroundTasks
 
-def log_voice_query(user_id: str, query: str, response: str):
-    try:
-        supabase.table("voice_queries").insert({
-            "user_id": user_id,
-            "query": query,
-            "response": response,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
-    except Exception as e:
-        print(f"Failed to log query: {e}")
 
-@app.post("/api/voice/query", response_model=VoiceResponse)
-async def process_voice_query(
-    request: VoiceQuery,
-    background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
-):
-    # Process voice query - try Ollama first, fall back to Gemini if not available
-    try:
-        # ========== FETCH USER PERSONALIZATION DATA ==========
-        
-        # 1. Fetch farmer profile
-        farmer_name = current_user.get("name", "Farmer")
-        pincode = ""
-        location_address = ""
-        acres = 0
-        lat = None
-        lon = None
-        
-        try:
-            profile_result = supabase.table("farmer_profiles").select("*").eq("user_id", current_user["id"]).execute()
-            if profile_result.data:
-                profile = profile_result.data[0]
-                farmer_name = profile.get("full_name") or farmer_name
-                pincode = profile.get("pincode", "")
-                location_address = profile.get("location_address", "")
-                acres = profile.get("acres_of_land", 0) or 0
-                lat = profile.get("latitude")
-                lon = profile.get("longitude")
-        except Exception as e:
-            print(f"Error fetching profile: {e}")
-        
-        # 2. Fetch real-time weather for user's location
-        weather_info = "Weather data unavailable"
-        season = "current season"
-        
-        try:
-            if lat and lon:
-                weather_data = get_fallback_weather(lat, lon)
-                if weather_data:
-                    temperature = f"{weather_data.get('temperature', 'N/A')}°C"
-                    humidity = f"{weather_data.get('humidity', 'N/A')}%"
-                    conditions = weather_data.get('conditions', 'Clear')
-                    season = weather_data.get('season', 'current season')
-                    weather_info = f"{temperature}, {conditions}, Humidity: {humidity}"
-        except Exception as e:
-            print(f"Error fetching weather: {e}")
-        
-        # 3. Fetch user's selected crops
-        crops_list = []
-        try:
-            crops_result = supabase.table("selected_crops").select("*").eq("user_id", current_user["id"]).execute()
-            if crops_result.data:
-                for crop in crops_result.data[:5]:
-                    crop_name = crop.get("crop_name") or crop.get("name", "Unknown")
-                    crops_list.append(crop_name)
-        except Exception as e:
-            print(f"Error fetching crops: {e}")
-        
-        crops_text = ", ".join(crops_list) if crops_list else "No crops selected yet"
-        
-        # 4. Get current date/time info
-        current_time = datetime.now()
-        time_of_day = "morning" if current_time.hour < 12 else ("afternoon" if current_time.hour < 17 else "evening")
-        current_date = current_time.strftime("%B %d, %Y")
-        
-        # ========== BUILD PERSONALIZED CONTEXT ==========
-        
-        system_context = f"""You are FarmVoice, a helpful AI farming assistant. Be VERY brief (1-2 sentences max).
 
-Farmer: {farmer_name}, Location: {location_address or 'India'}, Farm: {acres} acres
-Crops: {crops_text}
-Weather: {weather_info}
-
-Keep responses under 50 words. Be practical and direct."""
-        
-        # Add language instruction to the user query
-        language_instruction = ""
-        if request.language == "te":
-            language_instruction = "\n\n[IMPORTANT: Please respond in Telugu (తెలుగు) language. Use Telugu script.]"
-        elif request.language == "hi":
-            language_instruction = "\n\n[IMPORTANT: Please respond in Hindi (हिंदी) language. Use Devanagari script.]"
-        
-        user_query = request.query + language_instruction
-        
-        response_text = ""
-        
-        # Try Ollama first (for local development)
-        try:
-            import ollama
-            model_name = "llama3.1:latest"
-            
-            response = ollama.chat(
-                model=model_name, 
-                messages=[
-                    {
-                        'role': 'system',
-                        'content': system_context,
-                    },
-                    {
-                        'role': 'user',
-                        'content': user_query,
-                    },
-                ],
-                options={
-                    'num_predict': 80,      # Limit response tokens for speed
-                    'temperature': 0.7,     # Slightly lower for faster generation
-                    'top_p': 0.9,
-                    'num_ctx': 512,         # Smaller context window for speed
-                }
-            )
-            
-            response_text = response['message']['content']
-            print("Using Ollama for voice query")
-            
-        except (ImportError, Exception) as ollama_error:
-            # Fallback to Gemini API
-            print(f"Ollama unavailable ({ollama_error}), using Gemini API")
-            try:
-                import google.generativeai as genai
-                
-                # Get API key from environment
-                gemini_api_key = os.getenv("GOOGLE_API_KEY")
-                if not gemini_api_key:
-                    raise HTTPException(
-                        status_code=500, 
-                        detail="Neither Ollama nor Gemini API is available. Please configure GOOGLE_API_KEY."
-                    )
-                
-                genai.configure(api_key=gemini_api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                
-                # Combine system context and user query
-                full_prompt = f"{system_context}\n\nUser Question: {user_query}"
-                
-                gemini_response = model.generate_content(full_prompt)
-                response_text = gemini_response.text
-                print("Using Gemini API for voice query")
-                
-            except Exception as gemini_error:
-                print(f"Gemini API error: {gemini_error}")
-                raise HTTPException(
-                    status_code=500, 
-                    detail=f"Voice processing failed. Please ensure Ollama is running locally or GOOGLE_API_KEY is set."
-                )
-        
-        # Generate contextual suggestions
-        suggestions = []
-        query_lower = request.query.lower()
-        if any(word in query_lower for word in ["crop", "grow", "plant"]):
-            suggestions = ["Check Crop Recommendations", "View Market Prices"]
-        elif any(word in query_lower for word in ["disease", "pest", "problem", "leaf"]):
-            suggestions = ["Upload Photo for Diagnosis", "View Disease Guide"]
-        elif any(word in query_lower for word in ["price", "market", "sell"]):
-            suggestions = ["View Market Prices", "Check Nearby Markets"]
-        else:
-            suggestions = ["Ask about your crops", "Check today's weather"]
-        
-        # Log to background
-        background_tasks.add_task(log_voice_query, current_user["id"], request.query, response_text)
-        
-        return {
-            "response": response_text,
-            "suggestions": suggestions
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Voice processing error: {e}")
-        raise HTTPException(status_code=500, detail=f"Voice processing failed: {str(e)}")
 
 
 
@@ -879,6 +789,102 @@ async def get_farmer_profile(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch profile: {str(e)}")
 
+class LocationSaveRequest(BaseModel):
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    pincode: Optional[str] = None
+
+@app.post("/api/location/save")
+async def save_location_data(
+    request: LocationSaveRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Save/refresh location data with real-time weather, soil, and market information.
+    Can be called on login or when user location changes.
+    
+    Fetches from:
+    - Open-Meteo API for weather
+    - SoilGrids ISRIC for soil data
+    - data.gov.in for market prices
+    """
+    try:
+        location_data = {}
+        lat, lon = None, None
+        
+        # Get coordinates from pincode if provided
+        if request.pincode and len(request.pincode) == 6 and request.pincode.isdigit():
+            location_data = await get_pincode_data(request.pincode)
+            if location_data:
+                lat = location_data.get("latitude")
+                lon = location_data.get("longitude")
+        elif request.latitude and request.longitude:
+            lat = request.latitude
+            lon = request.longitude
+            location_data = await get_location_data_from_coords(lat, lon)
+        else:
+            raise HTTPException(status_code=400, detail="Either pincode or latitude/longitude must be provided")
+        
+        if not lat or not lon:
+            raise HTTPException(status_code=400, detail="Could not determine coordinates from provided data")
+        
+        # Fetch real-time weather data
+        weather_data = await get_weather_data(lat, lon)
+        
+        # Fetch market prices for location
+        market_prices = await get_market_prices_for_location(lat, lon)
+        
+        # Build profile update data
+        profile_update = {
+            "user_id": current_user["id"],
+            "latitude": lat,
+            "longitude": lon,
+            "state": location_data.get("state", ""),
+            "district": location_data.get("district", ""),
+            "region": location_data.get("region", ""),
+            "pincode": request.pincode or location_data.get("pincode", ""),
+            "location_address": location_data.get("display_name", ""),
+            "soil_type": location_data.get("soil_type", ""),
+            "climate_type": location_data.get("climate", ""),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Check if profile exists
+        existing = supabase.table("farmer_profiles").select("*").eq("user_id", current_user["id"]).execute()
+        
+        if existing.data:
+            result = supabase.table("farmer_profiles").update(profile_update).eq("user_id", current_user["id"]).execute()
+        else:
+            profile_update["created_at"] = datetime.now(timezone.utc).isoformat()
+            result = supabase.table("farmer_profiles").insert(profile_update).execute()
+        
+        # Return comprehensive location data
+        return {
+            "success": True,
+            "message": "Location data saved successfully",
+            "location": {
+                "latitude": lat,
+                "longitude": lon,
+                "state": location_data.get("state", ""),
+                "district": location_data.get("district", ""),
+                "region": location_data.get("region", ""),
+                "pincode": request.pincode or location_data.get("pincode", ""),
+                "display_name": location_data.get("display_name", ""),
+                "soil_type": location_data.get("soil_type", ""),
+                "climate": location_data.get("climate", "")
+            },
+            "weather": weather_data,
+            "market_prices": market_prices[:10] if market_prices else [],  # Top 10 prices
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save location data: {str(e)}")
+
+
+
 @app.post("/api/crop/recommend-by-pincode")
 async def recommend_crops_by_pincode(
     request: PincodeRequest,
@@ -910,7 +916,7 @@ async def recommend_crops_by_pincode(
         
         # Get AI-powered crop recommendations
         try:
-            recommendations = get_crop_recommendations(location_data, limit=10)
+            recommendations = get_crop_recommendations(location_data, supabase_client=supabase, limit=10)
         except Exception as rec_error:
             import traceback
             print(f"Error in recommend_crops: {str(rec_error)}")
@@ -1067,7 +1073,7 @@ async def check_crop_suitability_endpoint(
             }
         
         # Check crop suitability
-        result = check_crop_suitability(request.crop_name, location_data)
+        result = check_crop_suitability(request.crop_name, location_data, supabase_client=supabase)
         
         # Add location data and pincode to result
         result["location_data"] = location_data
@@ -1169,13 +1175,25 @@ async def generate_daily_tasks(user_id: str, crop_id: str, crop_name: str, farmi
         print(f"Error generating tasks: {e}")
 
 @app.get("/api/tasks")
-async def get_daily_tasks(current_user: dict = Depends(get_current_user)):
-    """Get daily tasks for farmer, including real-time weather-based tasks"""
+async def get_daily_tasks(
+    tab: str = "today",
+    current_user: dict = Depends(get_current_user)
+):
+    """Get daily tasks based on tab (yesterday, today, tomorrow) with smart task generation"""
     try:
-        today = datetime.now(timezone.utc).date().isoformat()
+        today_obj = datetime.now(timezone.utc).date()
         
-        # 1. Fetch scheduled tasks from DB
-        response = supabase.table("daily_tasks").select("*").eq("user_id", current_user["id"]).gte("scheduled_date", today).order("scheduled_date").execute()
+        # Determine target date
+        if tab == "yesterday":
+            target_date = (today_obj - timedelta(days=1)).isoformat()
+        elif tab == "tomorrow":
+            target_date = (today_obj + timedelta(days=1)).isoformat()
+        else: # today
+            target_date = today_obj.isoformat()
+        
+        # 1. Fetch scheduled tasks from DB for the specific date
+        # Note: Using 'scheduled_date' column as per schema
+        response = supabase.table("daily_tasks").select("*").eq("user_id", current_user["id"]).eq("scheduled_date", target_date).order("created_at").execute()
         db_tasks = response.data or []
         
         # Rename keys to match frontend expectation (task_name -> task, scheduled_date -> date)
@@ -1255,8 +1273,12 @@ async def get_daily_tasks(current_user: dict = Depends(get_current_user)):
                 except Exception as w_err:
                     print(f"Weather task generation failed: {w_err}")
 
-        # Combine tasks (Realtime first)
-        all_tasks = realtime_tasks + formatted_db_tasks
+        # Combine tasks (Realtime only if tab is today)
+        if tab == "today":
+             all_tasks = realtime_tasks + formatted_db_tasks
+        else:
+             all_tasks = formatted_db_tasks
+             
         return all_tasks
 
     except Exception as e:
@@ -1327,12 +1349,35 @@ async def predict_disease(
     request: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    """Predict diseases for a crop using web scraping"""
+    """Predict diseases for a crop using Supabase database (with web scraping fallback)"""
     try:
         crop_name = request.get("crop_name")
         if not crop_name:
             raise HTTPException(status_code=400, detail="Crop name is required")
             
+        # 1. Try to fetch from Supabase first
+        try:
+            # excessive filtering to match any crop case
+            response = supabase.table("diseases").select("*").ilike("crop_name", f"%{crop_name}%").execute()
+            
+            if response.data and len(response.data) > 0:
+                diseases = []
+                for row in response.data:
+                    diseases.append({
+                        "name": row.get("disease_name"),
+                        "symptoms": row.get("symptoms"),
+                        "control": row.get("control_methods"),
+                        "description": row.get("description"),
+                        "image_url": row.get("image_url"),
+                        "prevention": row.get("prevention")
+                    })
+                return {"diseases": diseases}
+        except Exception as db_error:
+            print(f"Supabase fetch failed: {db_error}")
+            # Continue to fallback
+            
+        # 2. Fallback to web scraping if no data in DB
+        print(f"No DB data for {crop_name}, falling back to scraper...")
         from web_scraper import scrape_plant_diseases
         diseases = await scrape_plant_diseases(crop_name)
         
@@ -1340,103 +1385,7 @@ async def predict_disease(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to predict diseases: {str(e)}")
 
-@app.get("/api/tasks")
-async def get_daily_tasks(
-    tab: str = "today",
-    current_user: dict = Depends(get_current_user)
-):
-    """Get daily tasks based on tab (yesterday, today, tomorrow) with smart task generation"""
-    try:
-        # Get user profile for location-based weather data
-        profile = None
-        try:
-            profile_response = supabase.table("farmer_profiles").select("*").eq("user_id", current_user["id"]).execute()
-            if profile_response.data:
-                profile = profile_response.data[0]
-        except Exception:
-            pass
-        
-        # Get weather data for smart task generation
-        weather_data = None
-        if profile and profile.get("latitude") and profile.get("longitude"):
-            try:
-                from web_scraper import get_weather_data
-                weather_data = await get_weather_data(profile["latitude"], profile["longitude"])
-            except Exception:
-                pass
-        
-        # Fetch manual tasks from database
-        tasks = []
-        try:
-            # Calculate date based on tab
-            today = datetime.now(timezone.utc).date()
-            if tab == "yesterday":
-                target_date = today - timedelta(days=1)
-            elif tab == "tomorrow":
-                target_date = today + timedelta(days=1)
-            else:  # today
-                target_date = today
-            
-            # Fetch tasks from database
-            response = supabase.table("daily_tasks").select("*").eq("user_id", current_user["id"]).eq("date", str(target_date)).execute()
-            if response.data:
-                tasks = response.data
-        except Exception as e:
-            print(f"Error fetching tasks from database: {e}")
-        
-        # Generate smart tasks based on weather (only for today)
-        if tab == "today" and weather_data:
-            smart_tasks = []
-            current_weather = weather_data.get("current", {})
-            
-            # High wind warning - avoid spraying
-            if current_weather.get("wind_speed", 0) > 15:
-                smart_tasks.append({
-                    "id": 1001,
-                    "task": "task_avoid_spraying",
-                    "date": str(today),
-                    "status": "pending",
-                    "priority": "high",
-                    "source": "smart-weather",
-                    "meta": {
-                        "value": f"{current_weather.get('wind_speed', 0)} km/h"
-                    }
-                })
-            
-            # High humidity + warm temp = disease risk
-            if current_weather.get("humidity", 0) > 80 and 25 < current_weather.get("temperature", 0) < 35:
-                smart_tasks.append({
-                    "id": 1002,
-                    "task": "task_scout_disease",
-                    "date": str(today),
-                    "status": "pending",
-                    "priority": "high",
-                    "source": "smart-disease",
-                    "meta": {
-                        "value": "High Risk"
-                    }
-                })
-            
-            # Low precipitation - irrigation needed
-            if current_weather.get("precipitation", 0) < 1 and current_weather.get("temperature", 0) > 30:
-                smart_tasks.append({
-                    "id": 1003,
-                    "task": "task_check_irrigation",
-                    "date": str(today),
-                    "status": "pending",
-                    "priority": "medium",
-                    "source": "smart-weather",
-                    "meta": {
-                        "value": f"{current_weather.get('temperature', 0)}°C"
-                    }
-                })
-            
-            tasks.extend(smart_tasks)
-        
-        return tasks
-    except Exception as e:
-        print(f"Error in get_daily_tasks: {e}")
-        return []
+
 
 @app.get("/api/dashboard/stats")
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
@@ -1786,5 +1735,5 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 

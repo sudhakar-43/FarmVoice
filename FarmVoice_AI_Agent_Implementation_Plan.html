@@ -1,0 +1,652 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>FarmVoice AI Agent Implementation Plan</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+        }
+        h1 {
+            color: #16a34a;
+            border-bottom: 3px solid #16a34a;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #15803d;
+            margin-top: 30px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #166534;
+        }
+        h4 {
+            color: #14532d;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', monospace;
+        }
+        pre {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            background-color: transparent;
+            color: inherit;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #16a34a;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        blockquote {
+            border-left: 4px solid #16a34a;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background-color: #f0fdf4;
+        }
+        a {
+            color: #16a34a;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .date {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🌾</div>
+        <div class="date">Generated: January 20, 2026</div>
+    </div>
+    <h1>FarmVoice AI Agent - Production Implementation Plan</h1>
+<p><strong>Goal</strong>: Replace the existing AI Voice Assistant with a production-grade AI Agent called <strong>"FarmVoice"</strong> that can answer queries, make intelligent suggestions, and perform ALL data operations.</p>
+<hr />
+<h2>Key Requirements (From User Feedback)</h2>
+<blockquote>
+<p>[!IMPORTANT]</p>
+<ul>
+<li><strong>Replaces the old voice assistant completely</strong> - Not an addition, full replacement</li>
+<li><strong>Answers user queries</strong> - Must be able to respond intelligently to any farming question</li>
+<li><strong>Makes suggestions</strong> - Proactive, context-aware recommendations</li>
+<li><strong>Full CRUD on ALL entities</strong> - No restrictions on any data type</li>
+<li><strong>High-end, production quality</strong> - Zero tolerance for mistakes</li>
+</ul>
+</blockquote>
+<hr />
+<h2>Architecture Overview</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">graph</span><span class="w"> </span><span class="n">TD</span>
+<span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="s">&quot;Frontend&quot;</span>
+<span class="w">        </span><span class="n">A</span><span class="p">[</span><span class="n">FarmVoiceAgent</span><span class="w"> </span><span class="n">Component</span><span class="p">]</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">B</span><span class="p">[</span><span class="n">Voice</span><span class="w"> </span><span class="n">Input</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">Text</span><span class="w"> </span><span class="n">Input</span><span class="p">]</span>
+<span class="w">        </span><span class="n">A</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">C</span><span class="p">[</span><span class="n">Agent</span><span class="w"> </span><span class="n">Response</span><span class="w"> </span><span class="n">Display</span><span class="p">]</span>
+<span class="w">        </span><span class="n">A</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">D</span><span class="p">[</span><span class="n">Action</span><span class="w"> </span><span class="n">Confirmations</span><span class="p">]</span>
+<span class="w">    </span><span class="n">end</span>
+
+<span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="s">&quot;Backend - FarmVoice Agent&quot;</span>
+<span class="w">        </span><span class="n">E</span><span class="p">[</span><span class="n">Agent</span><span class="w"> </span><span class="n">Router</span><span class="p">]</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">F</span><span class="p">[</span><span class="n">FarmVoice</span><span class="w"> </span><span class="n">Core</span><span class="p">]</span>
+<span class="w">        </span><span class="n">F</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">G</span><span class="p">[</span><span class="n">Intent</span><span class="w"> </span><span class="n">Classifier</span><span class="p">]</span>
+<span class="w">        </span><span class="n">F</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">H</span><span class="p">[</span><span class="n">Query</span><span class="w"> </span><span class="n">Answerer</span><span class="p">]</span>
+<span class="w">        </span><span class="n">F</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">I</span><span class="p">[</span><span class="n">Suggestion</span><span class="w"> </span><span class="n">Engine</span><span class="p">]</span>
+<span class="w">        </span><span class="n">F</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">J</span><span class="p">[</span><span class="n">Action</span><span class="w"> </span><span class="n">Executor</span><span class="p">]</span>
+<span class="w">        </span><span class="n">F</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">K</span><span class="p">[</span><span class="n">Memory</span><span class="w"> </span><span class="n">Manager</span><span class="p">]</span>
+<span class="w">    </span><span class="n">end</span>
+
+<span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="s">&quot;Data Layer&quot;</span>
+<span class="w">        </span><span class="n">L</span><span class="p">[(</span><span class="n">Supabase</span><span class="w"> </span><span class="n">Database</span><span class="p">)]</span>
+<span class="w">        </span><span class="n">M</span><span class="p">[</span><span class="n">Weather</span><span class="w"> </span><span class="n">API</span><span class="p">]</span>
+<span class="w">        </span><span class="n">N</span><span class="p">[</span><span class="n">Market</span><span class="w"> </span><span class="n">API</span><span class="p">]</span>
+<span class="w">    </span><span class="n">end</span>
+
+<span class="w">    </span><span class="n">B</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">E</span>
+<span class="w">    </span><span class="n">G</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">H</span>
+<span class="w">    </span><span class="n">G</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">I</span>
+<span class="w">    </span><span class="n">G</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">J</span>
+<span class="w">    </span><span class="n">J</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">L</span>
+<span class="w">    </span><span class="n">H</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">L</span>
+<span class="w">    </span><span class="n">H</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">M</span>
+<span class="w">    </span><span class="n">H</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">N</span>
+<span class="w">    </span><span class="n">K</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">L</span>
+<span class="w">    </span><span class="n">F</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">C</span>
+</code></pre></div>
+
+<hr />
+<h2>Full Permission Matrix (ALL Features Enabled)</h2>
+<table>
+<thead>
+<tr>
+<th>Entity</th>
+<th style="text-align: center;">Read</th>
+<th style="text-align: center;">Create</th>
+<th style="text-align: center;">Update</th>
+<th style="text-align: center;">Delete</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User Profile</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Full profile management</td>
+</tr>
+<tr>
+<td>Farmer Profile</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Location, land, preferences</td>
+</tr>
+<tr>
+<td>Selected Crops</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Add/remove/modify crops</td>
+</tr>
+<tr>
+<td>Daily Tasks</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Task management</td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Alert management</td>
+</tr>
+<tr>
+<td>Crop Health</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Health tracking</td>
+</tr>
+<tr>
+<td>Disease Diagnoses</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Diagnosis history</td>
+</tr>
+<tr>
+<td>Voice Queries</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Conversation history</td>
+</tr>
+<tr>
+<td>Crop Recommendations</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Saved recommendations</td>
+</tr>
+<tr>
+<td>Weather Data</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+<td>External API (read-only)</td>
+</tr>
+<tr>
+<td>Market Prices</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+<td>External API (read-only)</td>
+</tr>
+<tr>
+<td>Agent Memory</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Persistent context</td>
+</tr>
+<tr>
+<td>Agent Sessions</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td>Conversation sessions</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Proposed Changes</h2>
+<h3>Backend - Core Agent System</h3>
+<hr />
+<h4>[NEW] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/backend/voice_service/agent_core.py">agent_core.py</a></h4>
+<p>The brain of FarmVoice - handles all intelligence and coordination.</p>
+<p><strong>Core Classes:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">FarmVoiceAgent</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Main AI Agent - Replaces VoicePlanner completely.</span>
+<span class="sd">    Handles: Query answering, Suggestions, CRUD operations, Memory</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">process_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AgentResponse</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Main entry point for all agent interactions&quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">answer_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Intelligent response to any farming question&quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">generate_suggestions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Suggestion</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Proactive suggestions based on user state&quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">AgentAction</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ActionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute any CRUD operation with full permissions&quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">remember</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Store information in agent memory&quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">recall</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve from agent memory&quot;&quot;&quot;</span>
+</code></pre></div>
+
+<p><strong>Agent Response Structure:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">AgentResponse</span><span class="p">:</span>
+    <span class="n">speech</span><span class="p">:</span> <span class="nb">str</span>                    <span class="c1"># Natural language response</span>
+    <span class="n">suggestions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Suggestion</span><span class="p">]</span>  <span class="c1"># Proactive recommendations</span>
+    <span class="n">actions_taken</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Action</span><span class="p">]</span>    <span class="c1"># CRUD operations performed</span>
+    <span class="n">ui_updates</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>     <span class="c1"># Frontend state changes</span>
+    <span class="n">context_updates</span><span class="p">:</span> <span class="n">Dict</span>          <span class="c1"># Memory updates</span>
+</code></pre></div>
+
+<hr />
+<h4>[NEW] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/backend/voice_service/agent_memory.py">agent_memory.py</a></h4>
+<p>Persistent memory system for conversation continuity and personalization.</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span> <span class="nc">AgentMemory</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Three-tier memory system:</span>
+<span class="sd">    - Short-term: Current conversation (clears on session end)</span>
+<span class="sd">    - Working: Active task state (persists across messages)</span>
+<span class="sd">    - Long-term: User preferences (permanent)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">store_conversation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">role</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_conversation_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">store_preference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">get_preferences</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">clear_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">)</span>
+</code></pre></div>
+
+<hr />
+<h4>[NEW] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/backend/voice_service/agent_tools.py">agent_tools.py</a></h4>
+<p>Comprehensive tool registry with ALL CRUD capabilities.</p>
+<p><strong>Tool Categories:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Profile Tools</strong></td>
+<td><code>get_profile</code>, <code>update_profile</code>, <code>get_farmer_profile</code>, <code>update_farmer_profile</code></td>
+</tr>
+<tr>
+<td><strong>Crop Tools</strong></td>
+<td><code>get_crops</code>, <code>add_crop</code>, <code>update_crop</code>, <code>remove_crop</code>, <code>get_crop_recommendations</code></td>
+</tr>
+<tr>
+<td><strong>Task Tools</strong></td>
+<td><code>get_tasks</code>, <code>create_task</code>, <code>complete_task</code>, <code>update_task</code>, <code>delete_task</code></td>
+</tr>
+<tr>
+<td><strong>Health Tools</strong></td>
+<td><code>get_crop_health</code>, <code>record_health_check</code>, <code>update_health</code>, <code>get_disease_history</code></td>
+</tr>
+<tr>
+<td><strong>Weather Tools</strong></td>
+<td><code>get_current_weather</code>, <code>get_forecast</code>, <code>get_weather_alerts</code></td>
+</tr>
+<tr>
+<td><strong>Market Tools</strong></td>
+<td><code>get_prices</code>, <code>get_price_trends</code>, <code>compare_markets</code></td>
+</tr>
+<tr>
+<td><strong>Notification Tools</strong></td>
+<td><code>get_notifications</code>, <code>create_notification</code>, <code>mark_read</code>, <code>delete_notification</code></td>
+</tr>
+<tr>
+<td><strong>Memory Tools</strong></td>
+<td><code>remember</code>, <code>recall</code>, <code>forget</code>, <code>get_conversation_history</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h4>[NEW] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/backend/routers/agent_router.py">agent_router.py</a></h4>
+<p>RESTful API for FarmVoice Agent interactions.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Main Endpoints</span>
+<span class="n">POST</span> <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">agent</span><span class="o">/</span><span class="n">chat</span>          <span class="c1"># Send message, get response + actions</span>
+<span class="n">GET</span>  <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">agent</span><span class="o">/</span><span class="n">suggestions</span>   <span class="c1"># Get proactive suggestions</span>
+<span class="n">GET</span>  <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">agent</span><span class="o">/</span><span class="n">context</span>       <span class="c1"># Get current agent context for user</span>
+<span class="n">POST</span> <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">agent</span><span class="o">/</span><span class="n">action</span>        <span class="c1"># Direct action execution (admin/testing)</span>
+<span class="n">GET</span>  <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">agent</span><span class="o">/</span><span class="n">history</span>       <span class="c1"># Get conversation history</span>
+<span class="n">DELETE</span> <span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">agent</span><span class="o">/</span><span class="n">session</span>     <span class="c1"># Clear current session</span>
+</code></pre></div>
+
+<hr />
+<h4>[MODIFY] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/backend/voice_service/llm_service.py">llm_service.py</a></h4>
+<p>Enhanced prompts for intelligent agent behavior.</p>
+<p><strong>New Agent Prompt:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="n">PROMPTS</span><span class="p">[</span><span class="s2">&quot;agent&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">You are FarmVoice, an intelligent AI farming assistant with FULL permissions.</span>
+
+<span class="s2">CAPABILITIES:</span>
+<span class="s2">- Answer ANY farming question with expert knowledge</span>
+<span class="s2">- Access user&#39;s farm data (crops, tasks, health records)</span>
+<span class="s2">- Create, update, or delete user data when requested</span>
+<span class="s2">- Make proactive suggestions based on weather, season, crop health</span>
+<span class="s2">- Remember past conversations and user preferences</span>
+
+<span class="s2">PERSONALITY:</span>
+<span class="s2">- Friendly, knowledgeable, and encouraging</span>
+<span class="s2">- Speaks clearly with practical advice</span>
+<span class="s2">- Celebrates farmer achievements</span>
+<span class="s2">- Warns about risks proactively</span>
+
+<span class="s2">OUTPUT FORMAT (JSON):</span>
+<span class="s2">{</span>
+<span class="s2">    &quot;speech&quot;: &quot;Natural response to user...&quot;,</span>
+<span class="s2">    &quot;intent&quot;: &quot;query|action|suggestion|chat&quot;,</span>
+<span class="s2">    &quot;actions&quot;: [</span>
+<span class="s2">        {&quot;type&quot;: &quot;create|read|update|delete&quot;, &quot;entity&quot;: &quot;...&quot;, &quot;params&quot;: {...}}</span>
+<span class="s2">    ],</span>
+<span class="s2">    &quot;suggestions&quot;: [</span>
+<span class="s2">        {&quot;text&quot;: &quot;...&quot;, &quot;priority&quot;: &quot;high|medium|low&quot;, &quot;action&quot;: {...}}</span>
+<span class="s2">    ]</span>
+<span class="s2">}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+</code></pre></div>
+
+<hr />
+<h3>Database Schema Updates</h3>
+<h4>[MODIFY] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/backend/supabase_schema.sql">supabase_schema.sql</a></h4>
+<p>Add agent-specific tables:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1">-- Agent conversation sessions</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">agent_sessions</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">uuid_generate_v4</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">user_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">users</span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">DELETE</span><span class="w"> </span><span class="k">CASCADE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">started_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="k">TIME</span><span class="w"> </span><span class="k">ZONE</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">NOW</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">last_active</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="k">TIME</span><span class="w"> </span><span class="k">ZONE</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">NOW</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">session_context</span><span class="w"> </span><span class="n">JSONB</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;{}&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">is_active</span><span class="w"> </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">true</span>
+<span class="p">);</span>
+
+<span class="c1">-- Agent action audit log (tracks ALL agent operations)</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">agent_actions</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">uuid_generate_v4</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">session_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">agent_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">DELETE</span><span class="w"> </span><span class="k">CASCADE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">user_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">users</span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">DELETE</span><span class="w"> </span><span class="k">CASCADE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">action_type</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">  </span><span class="c1">-- create, read, update, delete</span>
+<span class="w">    </span><span class="n">entity_type</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">  </span><span class="c1">-- crop, task, profile, etc.</span>
+<span class="w">    </span><span class="n">entity_id</span><span class="w"> </span><span class="n">UUID</span><span class="p">,</span><span class="w">                    </span><span class="c1">-- ID of affected entity</span>
+<span class="w">    </span><span class="n">action_params</span><span class="w"> </span><span class="n">JSONB</span><span class="p">,</span><span class="w">               </span><span class="c1">-- Input parameters</span>
+<span class="w">    </span><span class="n">action_result</span><span class="w"> </span><span class="n">JSONB</span><span class="p">,</span><span class="w">               </span><span class="c1">-- Result/response</span>
+<span class="w">    </span><span class="n">success</span><span class="w"> </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">true</span><span class="p">,</span>
+<span class="w">    </span><span class="n">error_message</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">executed_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="k">TIME</span><span class="w"> </span><span class="k">ZONE</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">NOW</span><span class="p">()</span>
+<span class="p">);</span>
+
+<span class="c1">-- Agent memory (persistent across sessions)</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">agent_memory</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">uuid_generate_v4</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">user_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">users</span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">DELETE</span><span class="w"> </span><span class="k">CASCADE</span><span class="w"> </span><span class="k">UNIQUE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">conversation_history</span><span class="w"> </span><span class="n">JSONB</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;[]&#39;</span><span class="p">,</span><span class="w">  </span><span class="c1">-- Recent messages</span>
+<span class="w">    </span><span class="n">preferences</span><span class="w"> </span><span class="n">JSONB</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;{}&#39;</span><span class="p">,</span><span class="w">           </span><span class="c1">-- User preferences</span>
+<span class="w">    </span><span class="n">context</span><span class="w"> </span><span class="n">JSONB</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;{}&#39;</span><span class="p">,</span><span class="w">               </span><span class="c1">-- Working memory</span>
+<span class="w">    </span><span class="n">last_interaction</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="k">TIME</span><span class="w"> </span><span class="k">ZONE</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">NOW</span><span class="p">()</span>
+<span class="p">);</span>
+
+<span class="c1">-- Create indexes</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_agent_sessions_user_id</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">agent_sessions</span><span class="p">(</span><span class="n">user_id</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_agent_sessions_active</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">agent_sessions</span><span class="p">(</span><span class="n">is_active</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_agent_actions_user_id</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">agent_actions</span><span class="p">(</span><span class="n">user_id</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_agent_actions_type</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">agent_actions</span><span class="p">(</span><span class="n">action_type</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_agent_memory_user_id</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">agent_memory</span><span class="p">(</span><span class="n">user_id</span><span class="p">);</span>
+
+<span class="c1">-- Disable RLS (using JWT auth)</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">agent_sessions</span><span class="w"> </span><span class="n">DISABLE</span><span class="w"> </span><span class="k">ROW</span><span class="w"> </span><span class="k">LEVEL</span><span class="w"> </span><span class="k">SECURITY</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">agent_actions</span><span class="w"> </span><span class="n">DISABLE</span><span class="w"> </span><span class="k">ROW</span><span class="w"> </span><span class="k">LEVEL</span><span class="w"> </span><span class="k">SECURITY</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">agent_memory</span><span class="w"> </span><span class="n">DISABLE</span><span class="w"> </span><span class="k">ROW</span><span class="w"> </span><span class="k">LEVEL</span><span class="w"> </span><span class="k">SECURITY</span><span class="p">;</span>
+</code></pre></div>
+
+<hr />
+<h3>Frontend Updates</h3>
+<hr />
+<h4>[DELETE] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/components/VoiceAssistant.tsx">VoiceAssistant.tsx</a></h4>
+<p>Old voice assistant component will be removed.</p>
+<hr />
+<h4>[NEW] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/components/FarmVoiceAgent.tsx">FarmVoiceAgent.tsx</a></h4>
+<p>Complete replacement with enhanced features:</p>
+<p><strong>Features:</strong></p>
+<ul>
+<li>🎤 Voice input with speech recognition</li>
+<li>⌨️ Text input option</li>
+<li>🔊 Text-to-speech responses</li>
+<li>📝 Conversation history display</li>
+<li>✅ Action confirmation dialogs</li>
+<li>💡 Proactive suggestion cards</li>
+<li>🔄 Real-time action indicators</li>
+<li>📊 UI updates from agent actions</li>
+</ul>
+<p><strong>UI Design:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="err">┌─────────────────────────────────────────┐</span>
+<span class="err">│</span><span class="w">  </span><span class="err">🌾</span><span class="w"> </span><span class="n">FarmVoice</span><span class="w">                      </span><span class="p">[</span><span class="n">X</span><span class="p">]</span><span class="w">  </span><span class="err">│</span>
+<span class="err">├─────────────────────────────────────────┤</span>
+<span class="err">│</span><span class="w">                                         </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">👋</span><span class="w"> </span><span class="n">Hello</span><span class="o">!</span><span class="w"> </span><span class="n">I</span><span class="err">&#39;</span><span class="n">m</span><span class="w"> </span><span class="n">FarmVoice</span><span class="p">,</span><span class="w"> </span><span class="n">your</span><span class="w">          </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">intelligent</span><span class="w"> </span><span class="n">farming</span><span class="w"> </span><span class="n">assistant</span><span class="p">.</span><span class="w">         </span><span class="err">│</span>
+<span class="err">│</span><span class="w">                                         </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">┌─────────────────────────────────┐</span><span class="w">   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">│</span><span class="w"> </span><span class="err">💡</span><span class="w"> </span><span class="n">Suggestion</span><span class="o">:</span><span class="w"> </span><span class="n">Based</span><span class="w"> </span><span class="n">on</span><span class="w">         </span><span class="err">│</span><span class="w">   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">│</span><span class="w"> </span><span class="n">weather</span><span class="w"> </span><span class="n">forecast</span><span class="p">,</span><span class="w"> </span><span class="n">consider</span><span class="w">      </span><span class="err">│</span><span class="w">   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">│</span><span class="w"> </span><span class="n">watering</span><span class="w"> </span><span class="n">your</span><span class="w"> </span><span class="n">Rice</span><span class="w"> </span><span class="n">crop</span><span class="w"> </span><span class="n">today</span><span class="w">   </span><span class="err">│</span><span class="w">   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">│</span><span class="w">        </span><span class="p">[</span><span class="n">Accept</span><span class="p">]</span><span class="w"> </span><span class="p">[</span><span class="n">Dismiss</span><span class="p">]</span><span class="w">       </span><span class="err">│</span><span class="w">   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">└─────────────────────────────────┘</span><span class="w">   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">                                         </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="p">[</span><span class="n">You</span><span class="p">]</span><span class="w"> </span><span class="n">Add</span><span class="w"> </span><span class="n">tomatoes</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">my</span><span class="w"> </span><span class="n">farm</span><span class="w">          </span><span class="err">│</span>
+<span class="err">│</span><span class="w">                                         </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="p">[</span><span class="n">FarmVoice</span><span class="p">]</span><span class="w"> </span><span class="err">✅</span><span class="w"> </span><span class="n">Done</span><span class="o">!</span><span class="w"> </span><span class="n">I</span><span class="err">&#39;</span><span class="n">ve</span><span class="w"> </span><span class="n">added</span><span class="w">        </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Tomatoes</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">your</span><span class="w"> </span><span class="n">farm</span><span class="p">.</span><span class="w"> </span><span class="n">Would</span><span class="w"> </span><span class="n">you</span><span class="w">       </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">like</span><span class="w"> </span><span class="n">me</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">create</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">planting</span><span class="w">           </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">schedule</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">it</span><span class="o">?</span><span class="w">                       </span><span class="err">│</span>
+<span class="err">│</span><span class="w">                                         </span><span class="err">│</span>
+<span class="err">├─────────────────────────────────────────┤</span>
+<span class="err">│</span><span class="w">  </span><span class="err">🎤</span><span class="w"> </span><span class="n">You</span><span class="err">&#39;</span><span class="n">re</span><span class="w"> </span><span class="n">saying</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;show my tasks&quot;</span><span class="w">      </span><span class="err">│</span>
+<span class="err">├─────────────────────────────────────────┤</span>
+<span class="err">│</span><span class="w">  </span><span class="p">[</span><span class="n">____________Type</span><span class="w"> </span><span class="n">here_____________</span><span class="p">]</span><span class="w">   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">                                         </span><span class="err">│</span>
+<span class="err">│</span><span class="w">           </span><span class="err">🎤</span><span class="w"> </span><span class="p">[</span><span class="n">MIC</span><span class="p">]</span><span class="w">  </span><span class="err">⏹️</span><span class="w"> </span><span class="p">[</span><span class="n">STOP</span><span class="p">]</span><span class="w">            </span><span class="err">│</span>
+<span class="err">└─────────────────────────────────────────┘</span>
+</code></pre></div>
+
+<hr />
+<h4>[MODIFY] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/lib/api.ts">api.ts</a></h4>
+<p>Add agent API methods + remove old voice method:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Remove old method</span>
+<span class="c1">// async processVoiceQuery(query: string, language: string = &quot;en&quot;) {...}</span>
+
+<span class="c1">// Add new agent methods</span>
+<span class="k">async</span><span class="w"> </span><span class="nx">agentChat</span><span class="p">(</span><span class="nx">message</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">context?</span><span class="o">:</span><span class="w"> </span><span class="kt">AgentContext</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">ApiResponse</span><span class="o">&lt;</span><span class="nx">AgentResponse</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">request</span><span class="o">&lt;</span><span class="nx">AgentResponse</span><span class="o">&gt;</span><span class="p">(</span><span class="s2">&quot;/api/agent/chat&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">method</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">body</span><span class="o">:</span><span class="w"> </span><span class="kt">JSON.stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">message</span><span class="p">,</span><span class="w"> </span><span class="nx">context</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">  </span><span class="p">});</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="nx">getAgentSuggestions</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">ApiResponse</span><span class="o">&lt;</span><span class="nx">Suggestion</span><span class="p">[]</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">request</span><span class="o">&lt;</span><span class="nx">Suggestion</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="s2">&quot;/api/agent/suggestions&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="nx">getAgentContext</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">ApiResponse</span><span class="o">&lt;</span><span class="nx">AgentContext</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">request</span><span class="o">&lt;</span><span class="nx">AgentContext</span><span class="o">&gt;</span><span class="p">(</span><span class="s2">&quot;/api/agent/context&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="nx">getAgentHistory</span><span class="p">(</span><span class="nx">limit?</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">ApiResponse</span><span class="o">&lt;</span><span class="nx">Message</span><span class="p">[]</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">request</span><span class="o">&lt;</span><span class="nx">Message</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="sb">`/api/agent/history</span><span class="si">${</span><span class="nx">limit</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="sb">`?limit=</span><span class="si">${</span><span class="nx">limit</span><span class="si">}</span><span class="sb">`</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h4>[MODIFY] <a href="file:///c:/Users/P.SUDHAKAR%20BABU/Downloads/farmvoicePro/backend/main.py">main.py</a></h4>
+<p>Register new agent router, update voice endpoint to use agent:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">routers</span> <span class="kn">import</span> <span class="n">agent_router</span>
+
+<span class="c1"># Add new router</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">agent_router</span><span class="o">.</span><span class="n">router</span><span class="p">)</span>
+
+<span class="c1"># Keep voice_router for backward compatibility but redirect to agent</span>
+</code></pre></div>
+
+<hr />
+<h4>Update References</h4>
+<p>Files that import/use VoiceAssistant need updating:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/home/voice-assistant/page.tsx</code></td>
+<td>Update import to FarmVoiceAgent</td>
+</tr>
+<tr>
+<td><code>components/Navbar.tsx</code></td>
+<td>Update reference if exists</td>
+</tr>
+<tr>
+<td>Any other component using VoiceAssistant</td>
+<td>Update to FarmVoiceAgent</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Verification Plan</h2>
+<h3>Automated Tests</h3>
+<ol>
+<li>
+<p><strong>Agent Core Tests</strong></p>
+</li>
+<li>
+<p>Test intent classification accuracy</p>
+</li>
+<li>Test action execution for all CRUD operations</li>
+<li>
+<p>Test memory persistence</p>
+</li>
+<li>
+<p><strong>API Tests</strong></p>
+</li>
+<li>
+<p>Test all agent endpoints</p>
+</li>
+<li>Test error handling</li>
+<li>
+<p>Test authentication</p>
+</li>
+<li>
+<p><strong>Integration Tests</strong></p>
+</li>
+<li>Full conversation flow</li>
+<li>Multi-turn dialogue</li>
+<li>Action confirmation flow</li>
+</ol>
+<h3>Manual Verification</h3>
+<ol>
+<li>
+<p><strong>Query Answering</strong></p>
+</li>
+<li>
+<p>"What crops are good for monsoon season?"</p>
+</li>
+<li>"How do I treat tomato blight?"</li>
+<li>
+<p>"What's the weather forecast?"</p>
+</li>
+<li>
+<p><strong>CRUD Operations</strong></p>
+</li>
+<li>
+<p>"Add corn to my farm" → Verify in database</p>
+</li>
+<li>"Create a task to water plants tomorrow" → Check tasks</li>
+<li>"Update my location to Hyderabad" → Check profile</li>
+<li>
+<p>"Remove wheat from my crops" → Verify deletion</p>
+</li>
+<li>
+<p><strong>Suggestions</strong></p>
+</li>
+<li>
+<p>Login and verify proactive suggestions appear</p>
+</li>
+<li>
+<p>Check context-awareness of suggestions</p>
+</li>
+<li>
+<p><strong>Memory</strong></p>
+</li>
+<li>Ask about a crop, close and reopen</li>
+<li>Agent should remember previous context</li>
+</ol>
+</body>
+</html>

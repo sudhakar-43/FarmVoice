@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export interface ApiResponse<T> {
   data?: T;
@@ -34,7 +34,7 @@ class ApiClient {
 
   public async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
@@ -42,9 +42,25 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
+    // Always try to update token from localStorage before request if running on client
+    if (typeof window !== "undefined") {
+      const storedToken = localStorage.getItem("farmvoice_token");
+      if (storedToken) {
+        this.token = storedToken;
+      }
+    }
+
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
     }
+
+    // DEBUG: Log what we're sending
+    console.log("API Request Debug:", {
+      url,
+      hasToken: !!this.token,
+      tokenLength: this.token ? this.token.length : 0,
+      authHeader: headers["Authorization"] ? "Present" : "Missing"
+    });
 
     try {
       const response = await fetch(url, {
@@ -52,12 +68,19 @@ class ApiClient {
         headers,
       });
 
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
         this.clearToken();
+        
+        // Dispatch global auth error event for the AuthContext to handle
         if (typeof window !== "undefined") {
-          window.location.href = "/";
+          window.dispatchEvent(new CustomEvent('farmvoice:auth-error'));
         }
-        return { error: "Unauthorized" };
+
+        const errorMsg = response.status === 403 
+          ? "Access forbidden. Please log in again." 
+          : "Session expired. Please log in again.";
+        console.error(`Auth Error ${response.status}:`, errorMsg);
+        return { error: errorMsg };
       }
 
       const data = await response.json();
@@ -85,26 +108,40 @@ class ApiClient {
 
       return { data };
     } catch (error) {
-      return { error: error instanceof Error ? error.message : "Network error" };
+      return {
+        error: error instanceof Error ? error.message : "Network error",
+      };
     }
   }
 
+  public async post<T>(
+    endpoint: string,
+    body: any,
+    options: RequestInit = {},
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
   // Auth endpoints
-  async register(email: string, password: string, name?: string) {
+  async register(phoneNumber: string, password: string, name?: string) {
     const response = await this.request<{
       access_token: string;
       token_type: string;
-      user: { id: string; email: string; name: string };
+      user: { id: string; phone_number: string; name: string };
     }>("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ phone_number: phoneNumber, password, name }),
     });
 
     if (response.data) {
       this.setToken(response.data.access_token);
       if (typeof window !== "undefined") {
         localStorage.setItem("farmvoice_auth", "true");
-        localStorage.setItem("farmvoice_user", response.data.user.email);
+        localStorage.setItem("farmvoice_user", response.data.user.phone_number);
         localStorage.setItem("farmvoice_user_id", response.data.user.id);
         localStorage.setItem("farmvoice_user_name", response.data.user.name);
       }
@@ -113,21 +150,21 @@ class ApiClient {
     return response;
   }
 
-  async login(email: string, password: string) {
+  async login(phoneNumber: string, password: string) {
     const response = await this.request<{
       access_token: string;
       token_type: string;
-      user: { id: string; email: string; name: string };
+      user: { id: string; phone_number: string; name: string };
     }>("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ phone_number: phoneNumber, password }),
     });
 
     if (response.data) {
       this.setToken(response.data.access_token);
       if (typeof window !== "undefined") {
         localStorage.setItem("farmvoice_auth", "true");
-        localStorage.setItem("farmvoice_user", response.data.user.email);
+        localStorage.setItem("farmvoice_user", response.data.user.phone_number);
         localStorage.setItem("farmvoice_user_id", response.data.user.id);
         localStorage.setItem("farmvoice_user_name", response.data.user.name);
       }
@@ -145,7 +182,11 @@ class ApiClient {
   }
 
   // Crop recommendation
-  async getCropRecommendations(soilType: string, climate: string, season: string) {
+  async getCropRecommendations(
+    soilType: string,
+    climate: string,
+    season: string,
+  ) {
     return this.request<
       Array<{
         name: string;
@@ -181,7 +222,7 @@ class ApiClient {
         symptoms: string;
         control: string;
         image_url?: string;
-      }>
+      }>;
     }>("/api/disease/predict", {
       method: "POST",
       body: JSON.stringify({ crop_name: cropName }),
@@ -203,14 +244,27 @@ class ApiClient {
     >("/api/market/prices");
   }
 
-  // Voice assistant
-  async processVoiceQuery(query: string, language: string = "en") {
+  // Voice assistant - Synchronous / Blocking
+  async processVoiceQuery(query: string, language: string = "en", lat?: number, lon?: number) {
     return this.request<{
-      response: string;
-      suggestions?: string[];
-    }>("/api/voice/query", {
+      speech: string;
+      mode: string;
+      request_id: string;
+      canvas_spec?: any;
+      ui?: any;
+      timings?: any;
+      tool_results?: any;
+    }>("/api/voice/chat", {
       method: "POST",
-      body: JSON.stringify({ query, language }),
+      body: JSON.stringify({
+        text: query,
+        lang: language,
+        lat: lat,
+        lon: lon,
+        context: {
+          language: language,
+        },
+      }),
     });
   }
 
@@ -280,4 +334,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
-

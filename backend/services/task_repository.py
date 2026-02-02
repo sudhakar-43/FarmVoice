@@ -99,7 +99,7 @@ class TaskRepository:
         
         if total_tasks == 0:
             conn.close()
-            return {"score": 100, "status": "No Tasks", "details": "Start a crop to track health"}
+            return {"score": 0, "status": "Not Started", "growth": "N/A", "risks": "N/A", "details": "Complete tasks to improve health"}
             
         # Get completed tasks count
         cursor.execute("SELECT COUNT(*) FROM tasks WHERE user_id = ? AND status = 'completed'", (user_id,))
@@ -129,13 +129,13 @@ class TaskRepository:
         conn.close()
         
         if not rows:
-             return {"score": 100, "status": "Optimal", "growth": "Vigorous", "risks": "Minimal"}
+             return {"score": 0, "status": "Not Started", "growth": "N/A", "risks": "N/A"}
 
         total_due = len(rows)
         completed_due = sum(1 for r in rows if r[0] == 'completed')
         
         if total_due == 0:
-             return {"score": 100, "status": "Optimal", "growth": "Vigorous", "risks": "Minimal"}
+             return {"score": 0, "status": "Not Started", "growth": "N/A", "risks": "N/A"}
              
         ratio = completed_due / total_due
         score = int(ratio * 100)

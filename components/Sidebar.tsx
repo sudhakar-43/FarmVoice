@@ -46,7 +46,6 @@ export default function Sidebar() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-[#1a3c2f] truncate">{userName || "Farmer"}</p>
-          <p className="text-xs text-[#5C7A6B] font-medium">Premium Plan</p>
         </div>
         <button onClick={() => router.push("/settings")} className="p-2 hover:bg-[#F5F2EA] rounded-full transition-colors text-[#5C7A6B]">
             <FaCog className="text-sm" />

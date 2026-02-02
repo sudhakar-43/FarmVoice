@@ -1,16 +1,155 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, status, BackgroundTasks
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import os
 import json
 import time
+import asyncio
 from datetime import datetime
+from jose import jwt
 
-# Import config from voice_service (assuming it exists or I need to create/update it)
-# For now, I'll define a simple config handler here or use the one in voice_service if compatible.
-# I'll assume I need to implement the admin logic here.
+# Explicit import of farmvoice_agent
+from voice_service.agent_core import farmvoice_agent
+from voice_service.config import config
+import logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# --- Auth Helper (Localized to avoid circular imports) ---
+security = HTTPBearer()
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
+def get_current_user_dep(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Simple JWT validation to get user identity.
+    """
+    try:
+        token = credentials.credentials
+        # DEBUG LOGGING
+        print(f"DEBUG AUTH: Received token: {token[:20]}...") 
+        
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("sub") # Phone number or ID
+        
+        print(f"DEBUG AUTH: Decoded user_id: {user_id}")
+        
+        if user_id is None:
+             print("DEBUG AUTH: user_id is None")
+             raise HTTPException(status_code=401, detail="Invalid credentials")
+        return {"id": user_id} # Minimal user object
+    except Exception as e:
+        print(f"DEBUG AUTH ERROR: {str(e)}")
+        print(f"DEBUG AUTH ERROR: JWT_SECRET_KEY preview: {JWT_SECRET_KEY[:10]}...")
+        # Print full token if it's a structural error to see if it's malformed
+        print(f"Token caused error (first 30 chars): {credentials.credentials[:30]}...") 
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+# --- Models ---
+class VoiceChatRequest(BaseModel):
+    text: str
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    lang: Optional[str] = "en"
+    context: Optional[Dict[str, Any]] = {}
+
+class VoiceFinalResponse(BaseModel):
+    speech: str
+    mode: str = "final"
+    request_id: str
+    canvas_spec: Optional[Dict[str, Any]] = {}
+    ui: Optional[Dict[str, Any]] = {}
+    timings: Optional[Dict[str, Any]] = {}
+    cached: bool = False
+    tool_results: Optional[Dict[str, Any]] = {}
+
+# --- Endpoints ---
+
+@router.post("/api/voice/chat")
+async def voice_chat(
+    request: VoiceChatRequest,
+    current_user: dict = Depends(get_current_user_dep)
+):
+    """
+    Process voice chat query - Blocking/Synchronous.
+    Returns final response directly.
+    """
+    import uuid
+    
+    # TIMING: STT received
+    stt_received_ts = time.perf_counter()
+    request_id = str(uuid.uuid4())[:8]
+    
+    try:
+        # Build context
+        context = request.context or {}
+        context.update({
+            "user_id": current_user["id"],
+            "lat": request.lat,
+            "lon": request.lon,
+            "language": request.lang,
+            "active_crop": context.get("active_crop", "Rice"),
+            "request_id": request_id,
+            "stt_received_ts": stt_received_ts
+        })
+        
+        logger.info(f"Processing voice query: {request.text} (ID: {request_id})")
+        
+        # BLOCKING: Process message directly
+        result = await farmvoice_agent.process_message(
+            message=request.text,
+            user_id=current_user["id"],
+            context=context
+        )
+        
+        # Calculate timings
+        synth_end_ts = time.perf_counter()
+        total_ms = round((synth_end_ts - stt_received_ts) * 1000, 1)
+        
+        result["timings"] = result.get("timings", {})
+        result["timings"].update({
+            "total_e2e_ms": total_ms
+        })
+        
+        # Ensure result has standard fields
+        # Ideally, process_message returns a dict that matches VoiceFinalResponse structure roughly
+        # We construct the response object to be safe
+        
+        final_response = {
+            "speech": result.get("speech", ""),
+            "mode": "final",
+            "request_id": request_id,
+            "canvas_spec": result.get("ui_updates", {}), # Mapping ui_updates to canvas_spec ? Check agent_core
+            "ui": result.get("ui_updates", {}),
+            "timings": result.get("timings", {}),
+            "tool_results": {}, # Could extract if needed
+            "cached": False
+        }
+
+        # Check for error in result
+        if not result.get("success", True):
+             error_msg = result.get("error", "Unknown processing error")
+             logger.error(f"Voice processing returned error: {error_msg}")
+             # Throw real 500 so frontend knows it failed
+             raise HTTPException(status_code=500, detail=f"Voice processing failed: {error_msg}")
+
+        # Check for empty speech
+        if not final_response["speech"]:
+             logger.error("Empty speech in response")
+             raise HTTPException(status_code=500, detail="Voice agent returned empty response")
+
+        logger.info(f"Voice request {request_id} completed in {total_ms}ms")
+        return final_response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Voice Chat Critical Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # In-memory stats
 stats = {

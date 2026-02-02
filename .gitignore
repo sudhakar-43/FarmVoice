@@ -94,3 +94,6 @@ backend/debug/audio/
 # Voice Service - Configuration (contains API keys)
 backend/.env.voice.local
 
+
+# Local Netlify folder
+.netlify

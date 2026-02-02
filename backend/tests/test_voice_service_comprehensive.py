@@ -23,7 +23,7 @@ BASE_URL = "http://localhost:8000"
 
 # Test user credentials
 TEST_USER = {
-    "email": "test@farmvoice.com",
+    "phone_number": "9988779999",
     "password": "testpass123"
 }
 

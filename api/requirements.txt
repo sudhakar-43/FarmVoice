@@ -1,18 +1,24 @@
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-dotenv==1.0.0
-supabase==2.10.0
-pydantic==2.5.3
-python-multipart==0.0.6
-httpx>=0.26,<0.28
+# Core Framework
+fastapi==0.115.5
+uvicorn[standard]==0.34.0
+python-dotenv==1.0.1
+pydantic==2.10.4
+
+# Database & Auth
+supabase==2.11.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-bcrypt==4.1.2
+bcrypt==4.2.1
+
+# HTTP & Web
+httpx==0.28.1
+python-multipart==0.0.18
 beautifulsoup4==4.12.3
-google-generativeai==0.3.2
-websockets==12.0
-aiofiles==23.2.1
+
+# AI
+google-generativeai==0.8.3
+
+# Voice Service
+websockets==14.1
+aiofiles==24.1.0
 numpy>=1.26.0
-# Note: ollama removed - cannot run in Vercel serverless, use Gemini API instead
-
-

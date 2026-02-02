@@ -1,0 +1,50 @@
+Q: Hello
+A: Hello
+------------------------------
+Q: Which location am I from?
+A: Based on the provided context and user ID, it appears that you are from the United States of America (USA).
+------------------------------
+Q: Recommend crops for my location
+A: Based on your location not being specified, I recommend starting with vegetables and fruits that are commonly grown in the region.
+
+Here's a list of suitable options:
+
+- Leafy greens (lettuce, spinach)
+- Tomatoes
+- Cucumbers
+- Carrots
+- Potatoes
+- Apples
+- Bananas
+
+These crops can be easily grown and harvested at your location.
+------------------------------
+Q: What season is it now?
+A: It's currently winter.
+------------------------------
+Q: Hi FarmVoice!
+A: You have a Rice crop active in your field. What is the current weather like?
+------------------------------
+Q: Can you tell me about my soil type?
+A: Based on the user's location (latitude and longitude are not provided), I recommend checking with a local agricultural expert or consulting online resources such as the USDA's Soil Health Index or your state's Cooperative Extension Service for guidance.
+------------------------------
+Q: What crops grow best here?
+A: Based on the provided context, it seems that the user is asking for recommendations on what crops to grow in a specific location.
+
+Since I don't have any information about the user's location (lat and lon), I'll ask the user if they'd like me to provide general crop recommendations or try to find a more specific answer based on their location.
+
+User Query: What crops grow best here?
+
+Please respond with "general" or "find_location".
+------------------------------
+Q: Good morning!
+A: Good morning!
+------------------------------
+Q: What is the weather like right now?
+A: The user's location is unknown. Can you please tell me your city or region so I can provide a more accurate answer about the current weather?
+------------------------------
+Q: Suggest something for my farm
+A: You can consider planting a cover crop to protect your rice from weeds and improve soil health before switching to a new crop.
+
+Lat/Lon not provided, please provide location for more accurate suggestions.
+------------------------------

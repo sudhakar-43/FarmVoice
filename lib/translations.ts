@@ -12,7 +12,9 @@ export const translations = {
     
     // Auth
     welcome_back: "Welcome Back",
+    welcome: "Welcome",
     sign_in_subtitle: "Sign in to continue to your dashboard",
+    register_subtitle: "Create an account to get started",
     email_label: "Email Address",
     password_label: "Password",
     sign_in_button: "Sign In",
@@ -202,7 +204,9 @@ export const translations = {
     
     // Auth
     welcome_back: "స్వాగతం",
+    welcome: "స్వాగతం",
     sign_in_subtitle: "మీ డాష్‌బోర్డ్‌కి కొనసాగడానికి సైన్ ఇన్ చేయండి",
+    register_subtitle: "ప్రారంభించడానికి ఖాతాను సృష్టించండి",
     email_label: "ఇమెయిల్ చిరునామా",
     password_label: "పాస్‌వర్డ్",
     sign_in_button: "సైన్ ఇన్",
@@ -392,7 +396,9 @@ export const translations = {
     
     // Auth
     welcome_back: "वापसी पर स्वागत है",
+    welcome: "स्वागत है",
     sign_in_subtitle: "अपने डैशबोर्ड पर जारी रखने के लिए साइन इन करें",
+    register_subtitle: "आरंभ करने के लिए एक खाता बनाएं",
     email_label: "ईमेल पता",
     password_label: "पासवर्ड",
     sign_in_button: "साइन इन करें",

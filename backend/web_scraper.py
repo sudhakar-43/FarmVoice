@@ -5,16 +5,52 @@ Uses free sources: OpenStreetMap, SoilGrids, Open-Meteo
 
 import httpx
 import os
+import csv
 from typing import Dict, Optional, List
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Indian pincode data mapping (simplified - in production, use actual APIs or databases)
-PINCODE_DATA = {
-    # Sample data - in production, integrate with actual Indian pincode APIs
-    # Using free sources like India Post API, GeoNames, or OpenStreetMap
-}
+# Global cache for pincode data
+PINCODE_MAP = {}
+
+def load_pincode_data():
+    """Load pincode data from CSV into memory"""
+    global PINCODE_MAP
+    if PINCODE_MAP:
+        return
+
+    csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "pincodes.csv")
+    if os.path.exists(csv_path):
+        try:
+            print(f"Loading pincode data from {csv_path}...")
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    # CSV columns: pincode,district,state,latitude,longitude
+                    # Sanand model: key column name might vary, let's normalize
+                    pincode = row.get('pincode') or row.get('key', '')
+                    # Remove country code prefix if present (e.g. IN/110001 -> 110001)
+                    if pincode and '/' in pincode:
+                        pincode = pincode.split('/')[-1]
+                    
+                    if pincode:
+                        PINCODE_MAP[pincode] = {
+                            "pincode": pincode,
+                            "district": row.get('admin_name2', row.get('district', '')), # Might be missing in this dataset
+                            "state": row.get('admin_name1', row.get('state', '')), # State/Region
+                            "latitude": float(row.get('latitude', 0) or 0),
+                            "longitude": float(row.get('longitude', 0) or 0),
+                            "city": row.get('place_name', row.get('city', ''))
+                        }
+            print(f"Loaded {len(PINCODE_MAP)} pincodes.")
+        except Exception as e:
+            print(f"Error loading pincode CSV: {e}")
+            
+# Initialize on import (or lazy load)
+load_pincode_data()
+
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
 # Soil type mapping based on regions
 REGION_SOIL_MAP = {
@@ -38,12 +74,91 @@ REGION_CLIMATE_MAP = {
 
 async def get_pincode_data(pincode: str) -> Dict:
     """
-    Fetch pincode data from free Indian sources
-    Uses multiple sources: OpenStreetMap, GeoNames, India Post data
+    Fetch pincode data from local CSV (primary) or free Indian sources (fallback)
     Returns: location data including lat, lng, region, soil type, climate, weather
     """
+    # Ensure data is loaded
+    if not PINCODE_MAP:
+        load_pincode_data()
+        
+    def log_debug(msg):
+        try:
+            with open("debug_pincode.log", "a") as f:
+                f.write(f"{msg}\n")
+        except:
+            pass
+
+    log_debug(f"Fetching data for pincode: {pincode}")
+
     try:
-        # Method 1: Try using OpenStreetMap Nominatim API (free, no API key)
+        # Method 0: Local CSV Lookup (Offline & Accurate & Fast)
+        if pincode in PINCODE_MAP:
+            log_debug(f"Found in local CSV")
+            data = PINCODE_MAP[pincode]
+            
+            lat = data['latitude']
+            lon = data['longitude']
+            state = data['state']
+            district = data['district']
+            city = data['city']
+            region = extract_region_from_name(state)
+            
+            # Enhance with LIVE weather & Soil data
+            soil_data = await get_soil_data_from_soilgrids(lat, lon)
+            soil_type = soil_data.get("soil_type", "loamy") if soil_data else determine_soil_type(region, state)
+            climate = determine_climate(region, state)
+            
+            # Real-time weather
+            weather = await get_weather_data(lat, lon)
+            
+            # Suitable crops
+            suitable_crops = get_suitable_crops_for_region(state, district, soil_type, climate)
+            
+            result = {
+                "pincode": pincode,
+                "latitude": lat,
+                "longitude": lon,
+                "region": region,
+                "state": state,
+                "district": district,
+                "city": city,
+                "soil_type": soil_type,
+                "climate": climate,
+                "weather": weather,
+                "display_name": f"{city}, {district}, {state}",
+                "suitable_crops": suitable_crops,
+                "source": "Local Database (Verified)"
+            }
+            
+            if soil_data:
+                result["soil_details"] = soil_data
+                
+            return result
+        
+        # Method 1: Try Google Maps Geocoding API if key is available (Highest Accuracy)
+        if GOOGLE_MAPS_API_KEY:
+            try:
+                gmaps_data = await get_google_maps_location(pincode)
+                if gmaps_data:
+                    return gmaps_data
+            except Exception as e:
+                print(f"Google Maps API failed: {e}")
+        
+        # Method 2: Try Zippopotam.us API (High Accuracy, Free)
+        # Returns specific place names (e.g. "Kadambathur" for 631203)
+        try:
+            log_debug("Attempting Zippopotam.us")
+            zippo_data = await get_zippopotam_data(pincode)
+            if zippo_data:
+                log_debug(f"Zippopotam success: {zippo_data.get('city')}")
+                return zippo_data
+            else:
+                 log_debug("Zippopotam returned None")
+        except Exception as e:
+            print(f"Zippopotam.us API failed: {e}")
+            log_debug(f"Zippopotam failed: {e}")
+
+        # Method 3: Try using OpenStreetMap Nominatim API (free, no API key)
         async with httpx.AsyncClient(timeout=10.0, headers={"User-Agent": "FarmVoice/1.0"}) as client:
             # First, try to get location from pincode using Nominatim
             nominatim_url = "https://nominatim.openstreetmap.org/search"
@@ -108,7 +223,7 @@ async def get_pincode_data(pincode: str) -> Dict:
                     
                     return result
         
-        # Method 2: Try GeoNames API as fallback (free tier available)
+        # Method 4: Try GeoNames API as fallback (free tier available)
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 geonames_url = "http://api.geonames.org/postalCodeSearchJSON"
@@ -155,14 +270,212 @@ async def get_pincode_data(pincode: str) -> Dict:
         except Exception:
             pass  # Continue to fallback
         
-        # Fallback: Use hardcoded mapping based on pincode patterns
-        return get_fallback_pincode_data(pincode)
+        # NO MOCK DATA - FAIL IF ALL REAL METHODS FAIL
+        raise ValueError(f"Could not resolve pincode {pincode} via any real-time API.")
         
     except Exception as e:
         print(f"Error fetching pincode data: {e}")
         import traceback
         traceback.print_exc()
-        return get_fallback_pincode_data(pincode)
+        # Re-raise to prevent fallback to any mock data elsewhere
+        raise
+
+async def get_location_from_name(query: str) -> Optional[Dict]:
+    """
+    Resolve a location name (city, district, etc.) to coordinates and details.
+    Uses generic Nominatim search, returning the first/best match.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30.0, headers={"User-Agent": "FarmVoice/1.0"}) as client:
+            nominatim_url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                "q": query,
+                "countrycodes": "in",
+                "format": "json",
+                "limit": 1,
+                "addressdetails": 1
+            }
+            
+            response = await client.get(nominatim_url, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data and len(data) > 0:
+                    location = data[0]
+                    lat = float(location.get("lat", 0))
+                    lon = float(location.get("lon", 0))
+                    display_name = location.get("display_name", "")
+                    address = location.get("address", {})
+                    
+                    # Extract region/state
+                    state = address.get("state", extract_state_from_name(display_name))
+                    region = extract_region_from_name(state)
+                    district = address.get("county") or address.get("district") or address.get("city") or extract_district_from_name(display_name)
+                    city = address.get("city") or address.get("town") or address.get("village", "") or query
+                    
+                    # Enhance with soil/weather
+                    soil_data = await get_soil_data_from_soilgrids(lat, lon)
+                    soil_type = soil_data.get("soil_type", "loamy") if soil_data else determine_soil_type(region, state)
+                    climate = determine_climate(region, state)
+                    weather = await get_weather_data(lat, lon)
+                    suitable_crops = get_suitable_crops_for_region(state, district, soil_type, climate)
+                    
+                    result = {
+                        "query": query,
+                        "latitude": lat,
+                        "longitude": lon,
+                        "region": region,
+                        "state": state,
+                        "district": district,
+                        "city": city,
+                        "soil_type": soil_type,
+                        "climate": climate,
+                        "weather": weather,
+                        "display_name": display_name,
+                        "suitable_crops": suitable_crops,
+                        "source": "Nominatim (Name Search)"
+                    }
+                    
+                    if soil_data:
+                        result["soil_details"] = soil_data
+                        
+                    return result
+    except Exception as e:
+        print(f"Error resolving location name '{query}': {e}")
+        
+    return None
+
+def get_state_abbrev(abbrev: str) -> str:
+    """Convert state abbreviation to full name"""
+    states = {
+        "TN": "Tamil Nadu", "AP": "Andhra Pradesh", "TS": "Telangana", "KA": "Karnataka",
+        "KL": "Kerala", "MH": "Maharashtra", "GJ": "Gujarat", "MP": "Madhya Pradesh",
+        "UP": "Uttar Pradesh", "DL": "Delhi", "PB": "Punjab", "HR": "Haryana",
+        "RJ": "Rajasthan", "WB": "West Bengal", "OR": "Odisha", "JH": "Jharkhand",
+        "BR": "Bihar", "CG": "Chhattisgarh", "AS": "Assam"
+    }
+    return states.get(abbrev, abbrev)
+
+async def get_zippopotam_data(pincode: str) -> Optional[Dict]:
+    """Fetch location data from Zippopotam.us"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            url = f"https://api.zippopotam.us/IN/{pincode}"
+            response = await client.get(url)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("places"):
+                    place = data["places"][0]
+                    lat = float(place.get("latitude", 0))
+                    lon = float(place.get("longitude", 0))
+                    place_name = place.get("place name", "")
+                    state = place.get("state", "")
+                    state_abbr = place.get("state abbreviation", "")
+                    
+                    # Normalize state name if abbreviation needed
+                    if len(state) <= 3:
+                         state = get_state_abbrev(state_abbr or state)
+                    
+                    display_name = f"{place_name}, {state}, India"
+                    region = extract_region_from_name(state)
+                    
+                    # Enhance with soil and weather data
+                    soil_data = await get_soil_data_from_soilgrids(lat, lon)
+                    soil_type = soil_data.get("soil_type", "loamy") if soil_data else determine_soil_type(region, state)
+                    climate = determine_climate(region, state)
+                    weather = await get_weather_data(lat, lon)
+                    suitable_crops = get_suitable_crops_for_region(state, place_name, soil_type, climate)
+                    
+                    result = {
+                        "pincode": pincode,
+                        "latitude": lat,
+                        "longitude": lon,
+                        "region": region,
+                        "state": state,
+                        "district": place_name,
+                        "city": place_name,
+                        "soil_type": soil_type,
+                        "climate": climate,
+                        "weather": weather,
+                        "display_name": display_name,
+                        "suitable_crops": suitable_crops,
+                        "source": "Zippopotam.us"
+                    }
+                    
+                    if soil_data:
+                        result["soil_details"] = soil_data
+                        
+                    return result
+    except Exception as e:
+        print(f"Error in Zippopotam data fetch: {e}")
+        return None
+    return None
+
+async def get_google_maps_location(pincode: str) -> Optional[Dict]:
+    """Fetch accurate location data using Google Maps Geocoding API"""
+    params = {
+        "address": f"{pincode}, India",
+        "key": GOOGLE_MAPS_API_KEY
+    }
+    
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get("https://maps.googleapis.com/maps/api/geocode/json", params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "OK" and data.get("results"):
+                result = data["results"][0]
+                location = result.get("geometry", {}).get("location", {})
+                lat = float(location.get("lat", 0))
+                lon = float(location.get("lng", 0))
+                
+                # Extract address components
+                city = ""
+                district = ""
+                state = ""
+                
+                for comp in result.get("address_components", []):
+                    types = comp.get("types", [])
+                    if "locality" in types:
+                        city = comp.get("long_name")
+                    elif "administrative_area_level_2" in types:
+                        district = comp.get("long_name")
+                    elif "administrative_area_level_1" in types:
+                        state = comp.get("long_name")
+                        
+                place_name = city or district or "Unknown Location"
+                display_name = result.get("formatted_address", f"{place_name}, {state}, India")
+                region = extract_region_from_name(state)
+                
+                # Enhance with soil and weather data
+                soil_data = await get_soil_data_from_soilgrids(lat, lon)
+                soil_type = soil_data.get("soil_type", "loamy") if soil_data else determine_soil_type(region, state)
+                climate = determine_climate(region, state)
+                weather = await get_weather_data(lat, lon)
+                suitable_crops = get_suitable_crops_for_region(state, district, soil_type, climate)
+                
+                final_result = {
+                    "pincode": pincode,
+                    "latitude": lat,
+                    "longitude": lon,
+                    "region": region,
+                    "state": state,
+                    "district": district,
+                    "city": place_name,
+                    "soil_type": soil_type,
+                    "climate": climate,
+                    "weather": weather,
+                    "display_name": display_name,
+                    "suitable_crops": suitable_crops,
+                    "source": "Google Maps"
+                }
+                
+                if soil_data:
+                    final_result["soil_details"] = soil_data
+                    
+                return final_result
+                
+    return None
 
 def extract_region_from_name(display_name: str) -> str:
     """Extract region from display name"""
@@ -433,6 +746,37 @@ async def get_weather_data(lat: float, lon: float) -> Dict:
                 # Get current timestamp for data freshness
                 current_time = datetime.now(timezone.utc).isoformat()
                 
+                # Prepare detailed daily forecast list
+                daily_forecast_list = []
+                for i in range(len(daily_temps_max)):
+                    # Get date for this day
+                    import datetime as dt # avoid conflict with param
+                    day_date = (dt.datetime.now() + dt.timedelta(days=i)).isoformat()
+                    
+                    daily_forecast_list.append({
+                        "date": day_date,
+                        "max_temp": daily_temps_max[i] if i < len(daily_temps_max) else 0,
+                        "min_temp": daily_temps_min[i] if i < len(daily_temps_min) else 0,
+                        "precipitation": daily_precip[i] if i < len(daily_precip) else 0,
+                        "weather_code": daily_weather_codes[i] if i < len(daily_weather_codes) else 0,
+                        "condition": get_weather_condition(daily_weather_codes[i], 0, 25) if i < len(daily_weather_codes) else "Clear"
+                    })
+
+                # Prepare detailed hourly forecast list
+                hourly_forecast_list = []
+                for i in range(len(hourly_temps)):
+                    # Calculate hour time
+                    hour_time = (dt.datetime.now() + dt.timedelta(hours=i)).strftime("%H:00")
+                    
+                    hourly_forecast_list.append({
+                        "time": hour_time,
+                        "temperature": hourly_temps[i],
+                        "humidity": hourly_humidity[i] if i < len(hourly_humidity) else 0,
+                        "precipitation_prob": hourly_precip_prob[i] if i < len(hourly_precip_prob) else 0,
+                        "weather_code": weather_code, # Use current as hourly code usually matches or is complex to map individually without more data
+                        "condition": get_weather_condition(weather_code, 0, hourly_temps[i]) 
+                    })
+
                 return {
                     "current": {
                         "temperature": round(temp, 1),
@@ -454,6 +798,8 @@ async def get_weather_data(lat: float, lon: float) -> Dict:
                         "next_24h_precip_probability": round(sum(hourly_precip_prob) / len(hourly_precip_prob) if hourly_precip_prob else 0, 1),
                         "avg_humidity_24h": round(avg_humidity_24h, 1) if hourly_humidity else round(humidity, 1)
                     },
+                    "daily_forecast": daily_forecast_list,
+                    "hourly_forecast": hourly_forecast_list,
                     "season": season,
                     "description": f"{condition} - Temp: {round(temp, 1)}°C, Humidity: {round(humidity, 1)}%",
                     "source": "Open-Meteo (Real-time Data)",
@@ -464,9 +810,7 @@ async def get_weather_data(lat: float, lon: float) -> Dict:
         print(f"Error fetching weather from Open-Meteo: {e}")
         import traceback
         traceback.print_exc()
-    
-    # Fallback to seasonal estimation
-    return get_fallback_weather(lat, lon)
+        raise e # No fallback, enforce real data
 
 def determine_agricultural_season(lat: float, lon: float, temp: float, precipitation: float) -> str:
     """Determine agricultural season based on location and weather"""
@@ -633,13 +977,14 @@ def get_fallback_pincode_data(pincode: str) -> Dict:
 async def get_location_data_from_coords(lat: float, lon: float) -> Dict:
     """Get location data from coordinates (reverse geocoding)"""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, headers={"User-Agent": "FarmVoice/1.0"}) as client:
             nominatim_url = "https://nominatim.openstreetmap.org/reverse"
             params = {
                 "lat": lat,
                 "lon": lon,
                 "format": "json",
-                "zoom": 10
+                "zoom": 18,  # Higher zoom for more precise location (village/town level)
+                "addressdetails": 1
             }
             
             response = await client.get(nominatim_url, params=params)
@@ -649,7 +994,19 @@ async def get_location_data_from_coords(lat: float, lon: float) -> Dict:
                 
                 region = extract_region_from_name(data.get("display_name", ""))
                 state = address.get("state", "Unknown")
-                district = address.get("county", address.get("city", "Unknown"))
+                district = address.get("county") or address.get("state_district") or address.get("city", "Unknown")
+                
+                # Get the most precise location name (prioritize village > town > city > suburb)
+                city = (
+                    address.get("village") or 
+                    address.get("town") or 
+                    address.get("city") or 
+                    address.get("suburb") or
+                    address.get("neighbourhood") or
+                    address.get("hamlet") or
+                    district
+                )
+                
                 pincode = address.get("postcode", "")
                 
                 # Get real soil data from SoilGrids
@@ -669,6 +1026,7 @@ async def get_location_data_from_coords(lat: float, lon: float) -> Dict:
                     "region": region,
                     "state": state,
                     "district": district,
+                    "city": city,
                     "pincode": pincode,
                     "soil_type": soil_type,
                     "climate": climate,
@@ -691,6 +1049,7 @@ async def get_location_data_from_coords(lat: float, lon: float) -> Dict:
         "region": "central",
         "state": "Unknown",
         "district": "Unknown",
+        "city": "Unknown",
         "pincode": "",
         "soil_type": "loamy",
         "climate": "subtropical",
@@ -700,112 +1059,35 @@ async def get_location_data_from_coords(lat: float, lon: float) -> Dict:
 
 async def get_market_prices_for_location(lat: float, lon: float) -> List[Dict]:
     """
-    Get market prices for a specific location using web scraping.
-    Source: CommodityOnline (or similar public data)
+    Get real-time market prices for a specific location.
+    Uses the MarketService which integrates with data.gov.in API.
     """
-    import random
-    from datetime import datetime
-    from bs4 import BeautifulSoup
-    
-    results = []
-    
     try:
-        # Determine state based on location (simplified)
-        state_param = "andhra-pradesh" # Default
-        if 8 <= lat <= 20 and 76 <= lon <= 85: # Rough bounds for South India
-             if lat > 12 and lat < 19 and lon > 76 and lon < 85:
-                 state_param = "andhra-pradesh"
-             elif lat > 8 and lat < 14:
-                 state_param = "tamil-nadu"
-        
-        url = f"https://www.commodityonline.com/mandiprices/state/{state_param}"
-        
-        async with httpx.AsyncClient(timeout=15.0, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}) as client:
-            response = await client.get(url)
-            
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # The site uses a div-based structure where rows are not in tr/td
-                # We need to find the main container and iterate through children or find specific classes
-                # Based on observation: It's a list of items. Let's try to find the container with headers.
-                
-                # Strategy: Find the header "Commodity" and then look at siblings/next elements
-                # Or look for specific mobile-responsive classes if they exist
-                
-                # Let's try to find all divs that look like rows. 
-                # Often these are in a container with a specific ID or class.
-                # Since we don't have the exact class, we'll try a text-based approach for robustness.
-                
-                # Find all text nodes and reconstruct rows
-                # This is risky but can work if the structure is consistent
-                
-                # Better: Look for the specific commodity links which are usually bold or colored
-                # In commodityonline, commodities are often links <a>
-                
-                # Let's try to find the main content area
-                main_content = soup.find('div', {'id': 'main-content'}) or soup.find('body')
-                
-                # Find all rows. A row usually starts with the commodity name.
-                # Let's assume a row has ~9-10 data points.
-                
-                # Alternative: Use the fallback data if scraping is too fragile without exact classes
-                # But we want to try scraping first.
-                
-                # Let's look for the specific headers we saw
-                headers = soup.find_all(string=lambda text: text and "Commodity" in text)
-                if headers:
-                    header_row = headers[0].find_parent('div') # or tr
-                    # If it's a div structure, the data might be in subsequent divs
-                    pass
-
+        from services.market_service import market_service
+        prices = await market_service.get_prices_by_location(lat, lon)
+        return prices
     except Exception as e:
-        print(f"Scraping failed: {e}")
-
-    # If scraping yielded no results (or failed), fall back to simulated data
-    # We will use the EXACT data examples observed to make it look real
-    if not results:
-        print("Using fallback simulated market data")
-        today_str = datetime.now().strftime("%d/%m/%Y")
-        
-        # Real data examples from Andhra Pradesh
-        base_data = [
-            {"commodity": "Bajra(Pearl Millet/Cumbu)", "variety": "Local", "market": "Kurnool", "min": 2031, "max": 2099, "avg": 2099},
-            {"commodity": "Foxtail Millet(Navane)", "variety": "Other", "market": "Kurnool", "min": 2310, "max": 2310, "avg": 2310},
-            {"commodity": "Jowar(Sorghum)", "variety": "Jowar ( White)", "market": "Kurnool", "min": 2800, "max": 3200, "avg": 3150},
-            {"commodity": "Rice", "variety": "Sona Masuri", "market": "Guntur", "min": 4100, "max": 4600, "avg": 4350},
-            {"commodity": "Cotton", "variety": "Medium Staple", "market": "Adoni", "min": 6600, "max": 7100, "avg": 6850},
-            {"commodity": "Chilli Red", "variety": "Teja", "market": "Guntur", "min": 18500, "max": 21000, "avg": 19500},
-            {"commodity": "Turmeric", "variety": "Finger", "market": "Duggirala", "min": 6900, "max": 7600, "avg": 7250},
-            {"commodity": "Maize", "variety": "Hybrid", "market": "Narasaraopeta", "min": 2050, "max": 2250, "avg": 2150},
-            {"commodity": "Groundnut", "variety": "Bold", "market": "Yemmiganur", "min": 5600, "max": 6100, "avg": 5850},
-            {"commodity": "Tomato", "variety": "Hybrid", "market": "Madanapalle", "min": 1300, "max": 1900, "avg": 1600},
-            {"commodity": "Onion", "variety": "Red", "market": "Kurnool", "min": 2100, "max": 3100, "avg": 2600},
-            {"commodity": "Bengal Gram(Gram)", "variety": "Local", "market": "Kurnool", "min": 5800, "max": 6200, "avg": 6000},
-            {"commodity": "Black Gram (Urd Beans)", "variety": "Local", "market": "Tenali", "min": 7500, "max": 8200, "avg": 7900},
-            {"commodity": "Green Gram (Moong)", "variety": "Local", "market": "Guntur", "min": 7200, "max": 7800, "avg": 7500},
-            {"commodity": "Castor Seed", "variety": "Local", "market": "Yemmiganur", "min": 5400, "max": 5700, "avg": 5550}
-        ]
-        
-        for item in base_data:
-            # Add slight randomization to make it feel "live" if refreshed
-            variation = random.uniform(0.99, 1.01)
-            
-            results.append({
-                "commodity": item["commodity"],
-                "arrival_date": today_str,
-                "variety": item["variety"],
-                "state": "Andhra Pradesh",
-                "district": item["market"], # Using market as district for simplicity if unknown
-                "market": item["market"],
-                "min_price": round(item["min"] * variation),
-                "max_price": round(item["max"] * variation),
-                "avg_price": round(item["avg"] * variation),
+        print(f"Market service error: {e}")
+        # Return minimal fallback if service fails
+        from datetime import datetime
+        return [
+            {
+                "commodity": "Rice",
+                "variety": "Common",
+                "state": "India",
+                "district": "Local Market",
+                "market": "Local",
+                "min_price": 3800,
+                "max_price": 4500,
+                "avg_price": 4150,
+                "arrival_date": datetime.now().strftime("%d/%m/%Y"),
                 "unit": "Rs/Quintal",
+                "source": "Fallback Data",
                 "updated_at": datetime.now().isoformat()
-            })
+            }
+        ]
 
-    return results
+
 
 async def scrape_plant_diseases(crop_name: str) -> List[Dict]:
     """

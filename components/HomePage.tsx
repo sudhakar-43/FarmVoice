@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { 
   FaCloudSun, FaBell, FaCheckSquare, FaLeaf, FaWind, FaTint, FaCheck, 
   FaRobot, FaStethoscope, FaChartLine, FaUser, FaSignOutAlt, FaCog,
@@ -11,6 +12,12 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSettings } from "@/context/SettingsContext";
+import CropHealthChart from "@/components/CropHealthChart";
+import FullPageLoader from "@/components/FullPageLoader";
+
+// ... existing code ...
+
+
 
 interface Task {
   id: string;
@@ -41,7 +48,36 @@ export default function HomePage() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useSettings();
-  const [userName, setUserName] = useState("Farmer");
+  const [userName, setUserName] = useState("Farmer"); // Default fallback
+  
+  useEffect(() => {
+     // Load user name from personalized storage or fallback
+     const storedName = localStorage.getItem("farmvoice_user_name");
+     if (storedName && storedName !== "null" && storedName !== "undefined") {
+         setUserName(storedName);
+     } else {
+         // Optionally try to fetch profile if not in local storage
+         const fetchProfile = async () => {
+            try {
+                const userId = localStorage.getItem("farmvoice_user_id");
+                if (userId) {
+                    const { supabase } = await import("@/lib/supabaseClient");
+                    const { data } = await supabase.from('users').select('full_name').eq('id', userId).single();
+                    if (data?.full_name) {
+                        setUserName(data.full_name);
+                        localStorage.setItem("farmvoice_user_name", data.full_name);
+                    }
+                }
+            } catch (e) {
+                console.error("Profile fetch error", e);
+            }
+         };
+         fetchProfile();
+     }
+  }, []);
+  // Optimize: Max loading time constant
+  const MAX_LOADING_TIME = 2500; // 2.5 seconds max wait
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [healthData, setHealthData] = useState<HealthData>({
@@ -53,7 +89,9 @@ export default function HomePage() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [weatherLoading, setWeatherLoading] = useState(true);
+  const [isPageReady, setIsPageReady] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [healthDataReady, setHealthDataReady] = useState(false);
   
   // Animated score
   const [displayScore, setDisplayScore] = useState(0);
@@ -104,95 +142,234 @@ export default function HomePage() {
     }
   }, [healthData.score]);
 
-  // Fetch real-time weather
+  // Unified Data Fetching with Max Wait Time
   useEffect(() => {
+    let isMounted = true;
+    
+    // 1. Force page ready after MAX_LOADING_TIME (2.5s)
+    const maxTimer = setTimeout(() => {
+      if (isMounted) setIsPageReady(true);
+    }, MAX_LOADING_TIME);
+
+    // 2. Fetch Weather
     const fetchWeather = async () => {
       try {
+        // CACHE CHECK
+        const cached = localStorage.getItem("farmvoice_weather_cache");
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            const now = Date.now();
+            // 20 minutes cache validity for weather
+            if (now - timestamp < 1200000) {
+                if (isMounted) {
+                  setWeather(data);
+                  setWeatherLoading(false);
+                }
+                return; // Use cache
+            }
+        }
+
         const token = localStorage.getItem("farmvoice_token");
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/weather/current`, {
+        
+        // Try to get user's actual location for accurate weather
+        let lat: number | undefined;
+        let lon: number | undefined;
+        
+        if (navigator.geolocation) {
+          try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: false, // Changed to false for speed
+                timeout: 2000, // Reduced to 2s
+                maximumAge: 300000 // 5 minutes cache
+              });
+            });
+            lat = position.coords.latitude;
+            lon = position.coords.longitude;
+          } catch (geoError) {
+            console.log("Geolocation skipped or timed out, using fallback");
+          }
+        }
+        
+        // Build URL with coordinates if available
+        let url = `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/weather/current`;
+        if (lat && lon) {
+          url += `?lat=${lat}&lon=${lon}`;
+        } else {
+          // Fallback to pincode from localStorage
+          const pincode = localStorage.getItem("farmvoice_pincode");
+          if (pincode) {
+            url += `?pincode=${pincode}`;
+          }
+        }
+        
+        const response = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
+        if (response.status === 401) {
+            console.warn("Session expired. Redirecting to login...");
+            localStorage.removeItem("farmvoice_token");
+            window.location.href = "/login";
+            return;
+        }
+        
         if (response.ok) {
           const data = await response.json();
-          setWeather(data);
-        }
-      } catch (error) {
-        console.error("Weather fetch error:", error);
-        // Fallback weather
-        setWeather({
-          temperature: 25,
-          condition: "Clear",
-          humidity: 65,
-          wind_speed: 8,
-          location: "Simulated Location",
-          high: 28,
-          low: 18
-        });
-      } finally {
-        setWeatherLoading(false);
-      }
-    };
-    fetchWeather();
-  }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const storedName = localStorage.getItem("farmvoice_user_name");
-        if (storedName) setUserName(storedName);
-
-        const token = localStorage.getItem("farmvoice_token");
-        const userStr = localStorage.getItem("farmvoice_user");
-        const user = userStr ? JSON.parse(userStr) : {};
-        
-        // Parallel data fetching for performance
-        const dashResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/home/init`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-             user_id: user.id,
-             active_crop: "Wheat" 
-          })
-        });
-
-        if (dashResponse.ok) {
-          const data = await dashResponse.json();
-          if (data.dashboard) {
-             const allTasksData = data.dashboard.tasks || [];
-             setAllTasks(allTasksData);
-             setTasks(allTasksData.filter((t: Task) => t.status !== 'completed'));
-             setHealthData(data.dashboard.health || { score: 85, status: "Good", growth: "Normal", risks: "Low" });
+          const locationDisplay = data.location || "Your Field";
+          if (isMounted) {
+            setWeather({ ...data, location: locationDisplay });
+            // SAVE TO CACHE
+            localStorage.setItem("farmvoice_weather_cache", JSON.stringify({
+                data: { ...data, location: locationDisplay },
+                timestamp: Date.now()
+            }));
           }
         }
       } catch (error) {
-        console.error("Failed to fetch dashboard data", error);
-        setHealthData({ score: 85, status: "Good", growth: "Normal", risks: "Low" });
+        console.error("Weather fetch error:", error);
+        // Fallback weather (silent fail)
       } finally {
-        setLoading(false);
+        if (isMounted) setWeatherLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    // 3. Fetch Tasks / Profile
+    const initData = async () => {
+      try {
+        // QUICK CACHE CHECK FOR TASKS
+        const cachedTasks = localStorage.getItem("farmvoice_tasks_cache");
+        if (cachedTasks) {
+            const { data, timestamp } = JSON.parse(cachedTasks);
+            if (Date.now() - timestamp < 300000) { // 5 mins
+                if (isMounted) {
+                  setAllTasks(data.all);
+                  setTasks(data.pending);
+                  setLoading(false);
+                }
+                // We typically act on cached data and maybe re-fetch in background, 
+                // but for now this is good enough speedup.
+            }
+        }
+
+        let userId = localStorage.getItem("farmvoice_user_id");
+
+        // Ensure we have a valid UUID for Supabase, else fetch/create one
+        if (!userId || userId.length < 10) {
+            const { data: users } = await import("@/lib/supabaseClient").then(m => m.supabase.from("users").select("id").limit(1));
+            if (users && users.length > 0) {
+                userId = users[0].id;
+                localStorage.setItem("farmvoice_user_id", userId as string);
+            }
+        }
+        
+        if (!userId) return; 
+
+        const today = new Date().toISOString().split('T')[0];
+        const { supabase } = await import("@/lib/supabaseClient");
+
+        // 1. Fetch Today's Tasks
+        let { data: tasks, error } = await supabase
+          .from('daily_tasks')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('scheduled_date', today);
+
+        if (error) console.error("Supabase error:", error);
+
+        // 2. If no tasks for today, SEED them
+        if (!tasks || tasks.length === 0) {
+          const newTasks = [
+            { user_id: userId, task_name: "Check Soil Moisture", priority: "HIGH", scheduled_date: today, completed: false, task_type: "Field Work" },
+            { user_id: userId, task_name: "Inspect for Pests", priority: "HIGH", scheduled_date: today, completed: false, task_type: "Observation" },
+            { user_id: userId, task_name: "Watering Schedule", priority: "MEDIUM", scheduled_date: today, completed: false, task_type: "Irrigation" },
+            { user_id: userId, task_name: "Apply Fertilizer", priority: "MEDIUM", scheduled_date: today, completed: false, task_type: "Field Work" },
+            { user_id: userId, task_name: "Update Crop Log", priority: "LOW", scheduled_date: today, completed: false, task_type: "Record Keeping" },
+            { user_id: userId, task_name: "Check Weather Forecast", priority: "MEDIUM", scheduled_date: today, completed: false, task_type: "Planning" },
+            { user_id: userId, task_name: "Inspect Irrigation Lines", priority: "HIGH", scheduled_date: today, completed: false, task_type: "Maintenance" },
+            { user_id: userId, task_name: "Weeding", priority: "MEDIUM", scheduled_date: today, completed: false, task_type: "Field Work" },
+            { user_id: userId, task_name: "Record Growth Height", priority: "LOW", scheduled_date: today, completed: false, task_type: "Observation" },
+            { user_id: userId, task_name: "Clean Tools", priority: "LOW", scheduled_date: today, completed: false, task_type: "Maintenance" },
+          ];
+          
+          const { data: inserted, error: insertError } = await supabase.from('daily_tasks').insert(newTasks).select();
+          if (inserted) tasks = inserted;
+        }
+
+        if (tasks && isMounted) {
+           const formattedTasks = tasks.map((t: any) => ({
+             id: t.id,
+             task_name: t.task_name,
+             priority: t.priority || "MEDIUM",
+             due_date: t.scheduled_date,
+             status: t.completed ? 'completed' : 'pending'
+           }));
+
+           const pending = formattedTasks.filter((t: any) => t.status !== 'completed');
+           setAllTasks(formattedTasks);
+           setTasks(pending);
+           
+           // UPDATE CACHE
+           localStorage.setItem("farmvoice_tasks_cache", JSON.stringify({
+              data: { all: formattedTasks, pending },
+              timestamp: Date.now()
+           }));
+
+           // Logic: 10 tasks per day, Daily Progress
+           const completedCount = formattedTasks.filter((t: any) => t.status === 'completed').length;
+           const score = Math.min(100, completedCount * 10);
+           
+           setHealthData(prev => ({
+              ...prev,
+              score,
+              status: score >= 80 ? "Excellent" : score >= 50 ? "Good" : "Action Needed"
+           }));
+        }
+
+      } catch (err) {
+        console.error("Init failed:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    
+    // Execute Parallel
+    fetchWeather();
+    initData();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(maxTimer);
+    };
+  }, [userName]);
+
+  // Check if everything is ready earlier than max time
+  useEffect(() => {
+    if (!weatherLoading && !loading && healthDataReady && !isPageReady) {
+        // Data ready fast? Wait just a bit to ensure animation played for at least ~1.5s total visually
+        // But for now, just let it become ready. The max timer handles the "too slow" case.
+        // We can add a min timer if needed, but the user complained about slowness.
+        setIsPageReady(true);
+    }
+  }, [weatherLoading, loading, healthDataReady, isPageReady]);
 
   const handleCompleteTask = async (taskId: string) => {
     try {
+      // Optimistic UI Update - only update task state, NOT CHI
       setTasks(prev => prev.filter(t => t.id !== taskId));
       setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'completed' } : t));
-      setHealthData(prev => ({
-          ...prev, 
-          score: Math.min(100, prev.score + 5) 
-      }));
+      
+      // NOTE: CHI is NOT modified here.
+      // Task completion contributes to Daily Task Score (DTS).
+      // CHI only changes at end-of-day based on DTS thresholds.
+      // The CropHealthChart component will fetch fresh DTS/CHI data.
+      
+      // Invalidate cache so CropHealthChart refetches
+      localStorage.removeItem("farmvoice_chi_cache");
 
-      const token = localStorage.getItem("farmvoice_token");
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/tasks/${taskId}/complete`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const { supabase } = await import("@/lib/supabaseClient");
+      await supabase.from('daily_tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', taskId);
+
     } catch (error) {
       console.error("Error completing task", error);
     }
@@ -218,19 +395,46 @@ export default function HomePage() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
+    // Time ranges: 05:00-11:59 Morning, 12:00-16:59 Afternoon, 17:00-20:59 Evening, 21:00-04:59 Night
+    if (hour >= 5 && hour < 12) return "Good Morning";
+    if (hour >= 12 && hour < 17) return "Good Afternoon";
+    if (hour >= 17 && hour < 21) return "Good Evening";
+    return "Good Night";
+  };
+  
+  // Get priority color helper
+  const getPriorityColor = (priority: string) => {
+      const p = priority?.toUpperCase();
+      if (p === 'HIGH') return 'bg-red-100 text-red-700 border-red-200';
+      if (p === 'MEDIUM') return 'bg-amber-100 text-amber-700 border-amber-200';
+      return 'bg-blue-50 text-blue-600 border-blue-100'; // LOW
+  };
+
+  // Get priority icon helper
+  const getPriorityIcon = (priority: string) => {
+      const p = priority?.toUpperCase();
+      if (p === 'HIGH') return <span className="text-red-500 font-bold">!</span>;
+      if (p === 'MEDIUM') return <span className="text-amber-500 font-bold">•</span>;
+      return <span className="text-blue-500 font-bold">↓</span>; 
   };
 
   // Task display logic
   const pendingTasks = tasks.filter(t => t.status !== 'completed');
-  const completedTasks = allTasks.filter(t => t.status === 'completed');
+  const completedTasksList = allTasks.filter(t => t.status === 'completed');
+  const completedCount = completedTasksList.length;
+  const totalTasksCount = allTasks.length || 10; // Default to 10 if no tasks loaded yet
   const hasNoTasks = allTasks.length === 0;
-  const allCompleted = allTasks.length > 0 && pendingTasks.length === 0;
+  
+  // CRITICAL: "All caught up" ONLY when completed_tasks == 10 (all tasks done)
+  const allCompleted = totalTasksCount >= 10 && completedCount >= 10;
 
   return (
-    <div className={`min-h-screen bg-gradient-premium transition-colors duration-500`}>
+    <>
+      <AnimatePresence>
+        {!isPageReady && <FullPageLoader />}
+      </AnimatePresence>
+
+      <div className={`min-h-screen bg-gradient-premium transition-colors duration-500 ${!isPageReady ? 'invisible h-screen overflow-hidden' : 'visible'}`}>
       
       {/* BACKGROUND BLOBS */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
@@ -254,9 +458,8 @@ export default function HomePage() {
                  <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain invert brightness-0" />
               </div>
               <div>
-                 <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-800 to-teal-700 dark:from-emerald-400 dark:to-teal-300">FarmVoice</span>
-                 <p className="text-[10px] text-gray-500 font-medium tracking-wider uppercase">Pro Edition</p>
-              </div>
+                  <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-800 to-teal-700 dark:from-emerald-400 dark:to-teal-300">FarmVoice</span>
+               </div>
             </motion.div>
             
             {/* Nav Links - Center Pills */}
@@ -293,7 +496,6 @@ export default function HomePage() {
                 >
                   <div className="text-right hidden md:block">
                      <p className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-tight">{userName}</p>
-                     <p className="text-[10px] text-emerald-600 font-bold">Premium Plan</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-white text-lg font-bold shadow-md">
                     {userName.charAt(0).toUpperCase()}
@@ -356,94 +558,21 @@ export default function HomePage() {
         <div className="bento-grid">
           
           {/* Health Index Card (Large) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+          <div 
             onClick={() => router.push("/home/health")}
-            className="bento-item-large glass-card p-8 flex flex-col justify-between group cursor-pointer hover:border-emerald-300/50 transition-all overflow-hidden relative"
+            className="bento-item-large h-full w-full"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:bg-emerald-500/20"></div>
-            
-            <div className="flex justify-between items-start z-10">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                   <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
-                      <FaLeaf />
-                   </div>
-                   <h3 className="font-bold text-gray-800 dark:text-white text-lg">Crop Health Index</h3>
-                </div>
-                <p className="text-gray-500 text-sm">Real-time analysis based on soil & weather</p>
-              </div>
-              <motion.div 
-                 whileHover={{ x: 5 }} 
-                 className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors"
-              >
-                 <FaArrowRight size={12} />
-              </motion.div>
-            </div>
-            
-            <div className="flex flex-col md:flex-row items-center justify-between mt-6 gap-8 z-10">
-              {/* Animated Circle */}
-              <div className="relative">
-                <svg height={radius * 2} width={radius * 2} className="transform -rotate-90 drop-shadow-xl">
-                  <circle
-                    stroke="rgba(209, 213, 219, 0.3)"
-                    strokeWidth={stroke}
-                    fill="transparent"
-                    r={normalizedRadius}
-                    cx={radius}
-                    cy={radius}
-                  />
-                  <motion.circle
-                    stroke={displayScore >= 80 ? "#10B981" : displayScore >= 50 ? "#F59E0B" : "#EF4444"}
-                    strokeWidth={stroke}
-                    strokeDasharray={`${circumference} ${circumference}`}
-                    style={{ strokeDashoffset }}
-                    strokeLinecap="round"
-                    fill="transparent"
-                    r={normalizedRadius}
-                    cx={radius}
-                    cy={radius}
-                    className="filter drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center flex-col">
-                  <motion.span 
-                    className="text-4xl font-extrabold text-gray-800 dark:text-white"
-                    key={displayScore}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                  >
-                    {displayScore}%
-                  </motion.span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full mt-1 ${
-                    displayScore >= 80 ? 'bg-emerald-100 text-emerald-700' : 
-                    displayScore >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                  }`}>
-                    {healthData.status}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex-1 w-full grid grid-cols-2 gap-4">
-                 <div className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-2xl border border-white/20 backdrop-blur-sm">
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-1">Growth Rate</p>
-                    <p className="font-bold text-emerald-600 text-lg">{healthData.growth}</p>
-                 </div>
-                 <div className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-2xl border border-white/20 backdrop-blur-sm">
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-1">Risk Factors</p>
-                    <p className="font-bold text-red-500 text-lg">{healthData.risks}</p>
-                 </div>
-                 <div className="col-span-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                       <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '85%' }}></div>
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-1 text-right">Updated 5m ago</p>
-                 </div>
-              </div>
-            </div>
-          </motion.div>
+             <CropHealthChart onDataLoaded={(data) => {
+                 setHealthData(prev => ({
+                    ...prev,
+                    score: data.health_score,
+                    status: data.status,
+                    growth: data.growth_status,
+                    risks: data.risk_level
+                 }));
+                 setHealthDataReady(true);
+             }} />
+          </div>
 
           {/* Weather Card (Medium) */}
           <motion.div 
@@ -457,8 +586,9 @@ export default function HomePage() {
              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
              
             {weatherLoading ? (
-              <div className="flex items-center justify-center h-full min-h-[160px]">
+              <div className="flex flex-col items-center justify-center h-full min-h-[160px] gap-2">
                 <div className="animate-spin rounded-full h-8 w-8 border-4 border-white/30 border-t-white"></div>
+                <p className="text-white/80 text-sm font-medium">Fetching weather data…</p>
               </div>
             ) : weather ? (
               <div className="flex flex-col h-full justify-between relative z-10">
@@ -530,11 +660,11 @@ export default function HomePage() {
                 </div>
               ) : hasNoTasks ? (
                 <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-2">
-                     <FaCalendarCheck className="text-xl text-green-500" />
+                  <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-2">
+                     <FaTasks className="text-xl text-blue-400" />
                   </div>
-                  <p className="font-bold text-gray-700">No tasks for today</p>
-                  <p className="text-xs text-gray-400">Enjoy your free time!</p>
+                  <p className="font-bold text-gray-700">Loading today's tasks...</p>
+                  <p className="text-xs text-gray-400">Preparing your daily plan</p>
                 </div>
               ) : allCompleted ? (
                 <div className="flex flex-col items-center justify-center py-6 text-center h-full">
@@ -547,81 +677,93 @@ export default function HomePage() {
                     <FaCheck className="text-2xl text-emerald-600" />
                   </motion.div>
                   <p className="font-bold text-gray-800">All caught up!</p>
-                  <p className="text-xs text-gray-500">Great job completing your tasks.</p>
+                  <p className="text-xs text-gray-500">Great job completing all 10 tasks today.</p>
+                </div>
+              ) : completedCount === 0 ? (
+                // Zero tasks completed - show CTA, NOT "All caught up"
+                <div className="space-y-3">
+                  {/* Progress Indicator */}
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                    <span className="font-medium">Progress: {completedCount}/{totalTasksCount}</span>
+                    <span className="text-blue-500 font-medium">0 DTS</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3">
+                    <div className="bg-gray-300 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                  </div>
+                  <p className="text-xs text-gray-500 text-center italic mb-3">
+                    Complete today's tasks to start building your health score.
+                  </p>
+                  {pendingTasks.slice(0, 3).map((task) => (
+                    <motion.div 
+                      key={task.id} 
+                      whileHover={{ scale: 1.01 }}
+                      className="flex items-center justify-between p-3 bg-white border border-gray-100 hover:border-orange-200 rounded-xl shadow-sm transition-colors group/task"
+                    >
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleCompleteTask(task.id); }}
+                          className="w-5 h-5 rounded-md border-2 border-gray-300 hover:border-orange-500 hover:bg-orange-500 hover:text-white flex items-center justify-center transition-colors text-white"
+                        >
+                          <FaCheck className="text-[10px]" />
+                        </button>
+                        <div>
+                          <p className="font-semibold text-sm text-gray-800">{task.task_name}</p>
+                          <p className="text-[10px] text-emerald-600 font-medium">+10 Daily Task Score</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full border flex items-center gap-1 ${getPriorityColor(task.priority)}`}>
+                        {getPriorityIcon(task.priority)} {task.priority}
+                      </span>
+                    </motion.div>
+                  ))}
                 </div>
               ) : (
-                pendingTasks.slice(0, 3).map((task) => (
-                  <motion.div 
-                    key={task.id} 
-                    whileHover={{ scale: 1.01 }}
-                    className="flex items-center justify-between p-3 bg-white border border-gray-100 hover:border-orange-200 rounded-xl shadow-sm transition-colors group/task"
-                  >
-                    <div className="flex items-center gap-3">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleCompleteTask(task.id); }}
-                        className="w-5 h-5 rounded-md border-2 border-gray-300 hover:border-orange-500 hover:bg-orange-500 hover:text-white flex items-center justify-center transition-colors text-white"
-                      >
-                        <FaCheck className="text-[10px]" />
-                      </button>
-                      <div>
-                        <p className="font-semibold text-sm text-gray-800">{task.task_name}</p>
-                        <p className="text-[10px] text-gray-500">Due: {task.due_date}</p>
-                      </div>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                      task.priority === 'HIGH' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-50 text-gray-500'
-                    }`}>
-                      {task.priority}
-                    </span>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </motion.div>
-
-          {/* Quick Actions (Full Row) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="col-span-1 md:col-span-4 glass-card p-6"
-          >
-            <h3 className="font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-               <FaLightbulb className="text-yellow-500" /> Quick Actions
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {[
-                { icon: <FaRobot />, label: "Ask AI", path: "/home/voice-assistant", color: "from-emerald-500 to-teal-500" },
-                { icon: <FaSeedling />, label: "Crop Advisor", path: "/home/crop-recommendation", color: "from-green-500 to-emerald-500" },
-                { icon: <FaStethoscope />, label: "Disease Scan", path: "/home/disease-management", color: "from-red-500 to-pink-500" },
-                { icon: <FaChartLine />, label: "Market Prices", path: "/home/market-prices", color: "from-blue-500 to-indigo-500" },
-                { icon: <FaCloudSun />, label: "Weather", path: "/home/weather", color: "from-sky-400 to-blue-500" },
-                { icon: <FaTasks />, label: "Tasks", path: "/home/tasks", color: "from-orange-400 to-red-500" },
-                { icon: <FaChartBar />, label: "Analytics", path: "/home/analytics", color: "from-purple-500 to-indigo-500" },
-                { icon: <FaLightbulb />, label: "Farming Tips", path: "/home/farming-tips", color: "from-yellow-400 to-orange-500" },
-                { icon: <FaLandmark />, label: "Schemes", path: "/home/govt-schemes", color: "from-indigo-500 to-purple-500" },
-                { icon: <FaMapMarkerAlt />, label: "Mandis", path: "/home/nearby-mandis", color: "from-teal-400 to-cyan-500" },
-              ].map((action, idx) => (
-                <motion.button
-                  key={idx}
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => router.push(action.path)}
-                  className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-all group"
-                >
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center text-white text-xl shadow-md group-hover:shadow-lg transition-all`}>
-                    {action.icon}
+                // Partial completion (1-9 tasks done) - show list with progress
+                <div className="space-y-3">
+                  {/* Progress Indicator */}
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                    <span className="font-medium">Progress: {completedCount}/{totalTasksCount}</span>
+                    <span className="text-emerald-600 font-bold">{completedCount * 10} DTS</span>
                   </div>
-                  <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                    {action.label}
-                  </span>
-                </motion.button>
-              ))}
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3">
+                    <motion.div 
+                      className="bg-emerald-500 h-1.5 rounded-full" 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(completedCount / totalTasksCount) * 100}%` }}
+                      transition={{ duration: 0.5 }}
+                    ></motion.div>
+                  </div>
+                  {pendingTasks.slice(0, 3).map((task) => (
+                    <motion.div 
+                      key={task.id} 
+                      whileHover={{ scale: 1.01 }}
+                      className="flex items-center justify-between p-3 bg-white border border-gray-100 hover:border-orange-200 rounded-xl shadow-sm transition-colors group/task"
+                    >
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleCompleteTask(task.id); }}
+                          className="w-5 h-5 rounded-md border-2 border-gray-300 hover:border-orange-500 hover:bg-orange-500 hover:text-white flex items-center justify-center transition-colors text-white"
+                        >
+                          <FaCheck className="text-[10px]" />
+                        </button>
+                        <div>
+                          <p className="font-semibold text-sm text-gray-800">{task.task_name}</p>
+                          <p className="text-[10px] text-emerald-600 font-medium">+10 Daily Task Score</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full border flex items-center gap-1 ${getPriorityColor(task.priority)}`}>
+                        {getPriorityIcon(task.priority)} {task.priority}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
 
         </div>
       </main>
     </div>
+    </>
   );
 }

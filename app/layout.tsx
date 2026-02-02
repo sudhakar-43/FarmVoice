@@ -7,6 +7,9 @@ export const metadata: Metadata = {
 };
 
 import { SettingsProvider } from "@/context/SettingsContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
+
+import { AuthProvider } from "@/context/AuthContext";
 
 export default function RootLayout({
   children,
@@ -14,11 +17,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">
-        <SettingsProvider>
-          {children}
-        </SettingsProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
+        <ErrorBoundary>
+          <AuthProvider>
+            <SettingsProvider>
+              {children}
+            </SettingsProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

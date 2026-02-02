@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 from .config import config
 from .observability import metrics_collector
-from .planner import voice_planner
+from .agent_core import farmvoice_agent
 from .stt_service import stt_service
 from .tts_service import tts_service
 
@@ -221,13 +221,15 @@ class WebSocketHandler:
         # Check for theme command
         if "theme" in text.lower() and ("dark" in text.lower() or "light" in text.lower()):
             theme = "dark" if "dark" in text.lower() else "light"
-            result = await voice_planner.process_theme_command(theme)
+            # Use agent to handle theme change which returns ui_updates
+            user_id = session.context.get("user_id", "anonymous")
+            result = await farmvoice_agent.process_message(text, user_id, session.context)
             
             await session.send_message({
                 "type": "respond",
-                "speech": result.get("speech", ""),
-                "canvas_spec": result.get("canvas_spec", {}),
-                "ui": result.get("ui", {})
+                "speech": result.get("speech", f"Switching to {theme} theme"),
+                "canvas_spec": result.get("canvas_spec", {}), # Fallback/Future proofing
+                "ui": result.get("ui_updates", {})
             })
             
             # TTS for theme change
@@ -237,27 +239,26 @@ class WebSocketHandler:
             
             return
         
-        # Process query through planner
+        # Process query through agent
         try:
-            # Define callback to emit intermediate results
-            async def emit_callback(message: Dict[str, Any]):
-                await session.send_message(message)
-            
+             # Extract User ID from context (sent by frontend in meta)
+            user_id = session.context.get("user_id", "anonymous")
+
             # Process query
-            result = await voice_planner.process_query(
-                query=text,
-                context=session.context,
-                emit_callback=emit_callback
+            result = await farmvoice_agent.process_message(
+                message=text,
+                user_id=user_id,
+                context=session.context
             )
             
             # Send final response
             await session.send_message({
                 "type": "respond",
                 "speech": result.get("speech", ""),
-                "canvas_spec": result.get("canvas_spec", {}),
-                "ui": result.get("ui", {}),
+                "canvas_spec": {}, # Agent currently doesn't output canvas_spec directly
+                "ui": result.get("ui_updates", {}),
                 "timings": result.get("timings", {}),
-                "cached": result.get("cached", False)
+                "cached": False
             })
             
             # TTS handling

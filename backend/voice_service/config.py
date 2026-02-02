@@ -9,6 +9,9 @@ import secrets
 from pathlib import Path
 from typing import Literal, Optional
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Voice mode type
 VoiceMode = Literal["local", "hybrid", "cloud"]
@@ -22,30 +25,41 @@ class VoiceConfig:
         self.enable_compat_shim: bool = os.getenv("ENABLE_COMPAT_SHIM", "true").lower() == "true"
         self.allow_mode_persist: bool = os.getenv("ALLOW_MODE_PERSIST", "false").lower() == "true"
         
+        # Voice Fast Mode - skip planner for simple intents
+        self.voice_fast_mode: bool = os.getenv("VOICE_FAST_MODE", "true").lower() == "true"
+        self.voice_ack_message: str = os.getenv("VOICE_ACK_MESSAGE", "Got it. Let me check that for you.")
+        
         # Model paths and settings
-        self.local_llm_model: str = os.getenv("LOCAL_LLM_MODEL", "llama3.1")
+        self.local_llm_model: str = os.getenv("LOCAL_LLM_MODEL", "llama3.2:1b")
         self.local_stt_model: str = os.getenv("LOCAL_STT_MODEL", "large-v3")
         self.local_tts_voice: str = os.getenv("LOCAL_TTS_VOICE", "en_US-lessac-medium")
         
         # Ollama settings
         self.ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        self.ollama_timeout: int = int(os.getenv("OLLAMA_TIMEOUT_MS", "800"))
+        self.ollama_timeout: int = int(os.getenv("OLLAMA_TIMEOUT_MS", "45000"))
+        
+        # Gemini settings
+        self.llm_provider: str = os.getenv("LLM_PROVIDER", "gemini")
+        self.gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+        self.gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
         
         # Timeouts (milliseconds)
-        self.voice_tool_timeout_ms: int = int(os.getenv("VOICE_TOOL_TIMEOUT_MS", "1000"))
-        self.llm_plan_timeout_ms: int = int(os.getenv("LLM_PLAN_TIMEOUT_MS", "500"))
-        self.llm_synth_timeout_ms: int = int(os.getenv("LLM_SYNTH_TIMEOUT_MS", "300"))
-        self.stt_partial_timeout_ms: int = int(os.getenv("STT_PARTIAL_TIMEOUT_MS", "300"))
-        self.tts_start_timeout_ms: int = int(os.getenv("TTS_START_TIMEOUT_MS", "400"))
+        self.voice_tool_timeout_ms: int = int(os.getenv("VOICE_TOOL_TIMEOUT_MS", "5000"))
+        self.llm_plan_timeout_ms: int = int(os.getenv("LLM_PLAN_TIMEOUT_MS", "5000"))
+        self.llm_synth_timeout_ms: int = int(os.getenv("LLM_SYNTH_TIMEOUT_MS", "5000"))
+        self.stt_partial_timeout_ms: int = int(os.getenv("STT_PARTIAL_TIMEOUT_MS", "1000"))
+        self.tts_start_timeout_ms: int = int(os.getenv("TTS_START_TIMEOUT_MS", "2000"))
         
-        # Cache TTLs (seconds)
-        self.cache_ttl_weather_s: int = int(os.getenv("VOICE_CACHE_TTL_WEATHER_S", "60"))
-        self.cache_ttl_market_s: int = int(os.getenv("VOICE_CACHE_TTL_MARKET_S", "86400"))
+        # Cache TTLs (seconds) - optimized for voice
+        self.cache_ttl_weather_s: int = int(os.getenv("VOICE_CACHE_TTL_WEATHER_S", "300"))  # 5 min
+        self.cache_ttl_market_s: int = int(os.getenv("VOICE_CACHE_TTL_MARKET_S", "900"))    # 15 min
         self.cache_ttl_soil_s: int = int(os.getenv("VOICE_CACHE_TTL_SOIL_S", "86400"))
         
         # Performance thresholds (milliseconds)
-        self.warn_ms: int = int(os.getenv("VOICE_WARN_MS", "1800"))
-        self.failsafe_ms: int = int(os.getenv("VOICE_FAILSAFE_MS", "2500"))
+        self.warn_ms: int = int(os.getenv("VOICE_WARN_MS", "10000"))
+        self.failsafe_ms: int = int(os.getenv("VOICE_FAILSAFE_MS", "30000"))
+        self.voice_max_latency_ms: int = int(os.getenv("VOICE_MAX_LATENCY_MS", "60000"))
+        self.voice_single_pass_mode: bool = os.getenv("VOICE_SINGLE_PASS_MODE", "true").lower() == "true"
         
         # Admin API security
         self.admin_token: str = os.getenv("ADMIN_TOKEN", "")

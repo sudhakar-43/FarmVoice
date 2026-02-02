@@ -1,0 +1,1373 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8">
+<title>FarmVoice Pro - Technical Project Report</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+@page {
+    size: A4;
+    margin: 2.54cm;
+}
+body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    color: #000000;
+    text-align: justify;
+    max-width: 100%;
+}
+.title-section {
+    text-align: center;
+    margin-bottom: 20pt;
+}
+.paper-title {
+    font-size: 24pt;
+    font-weight: bold;
+    margin-bottom: 12pt;
+}
+.author-info {
+    font-size: 11pt;
+    margin-bottom: 6pt;
+}
+.affiliation {
+    font-size: 10pt;
+    font-style: italic;
+    margin-bottom: 20pt;
+}
+.abstract-section {
+    margin: 20pt 40pt;
+}
+.abstract-title {
+    font-size: 12pt;
+    font-weight: bold;
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 8pt;
+}
+.abstract-text {
+    font-size: 9pt;
+    text-align: justify;
+}
+.keywords {
+    font-size: 9pt;
+    margin-top: 10pt;
+}
+.keywords-label {
+    font-weight: bold;
+    font-style: italic;
+}
+h1 {
+    font-size: 12pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: center;
+    margin-top: 18pt;
+    margin-bottom: 10pt;
+}
+h2 {
+    font-size: 11pt;
+    font-weight: bold;
+    font-style: italic;
+    margin-top: 14pt;
+    margin-bottom: 8pt;
+}
+h3 {
+    font-size: 10pt;
+    font-weight: bold;
+    margin-top: 10pt;
+    margin-bottom: 6pt;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12pt 0;
+    font-size: 9pt;
+}
+th {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 6pt 8pt;
+    text-align: left;
+    font-weight: bold;
+    border-top: 1.5pt solid #000000;
+    border-bottom: 1pt solid #000000;
+}
+td {
+    padding: 4pt 8pt;
+    border-bottom: 0.5pt solid #000000;
+}
+.table-caption {
+    font-size: 9pt;
+    text-align: center;
+    margin-bottom: 6pt;
+}
+.table-caption-label {
+    font-weight: bold;
+}
+.figure-container {
+    text-align: center;
+    margin: 16pt 0;
+}
+.figure-container img {
+    max-width: 90%;
+    height: auto;
+    border: 0.5pt solid #000000;
+}
+.figure-caption {
+    font-size: 9pt;
+    text-align: center;
+    margin-top: 6pt;
+}
+.figure-caption-label {
+    font-weight: bold;
+}
+.code-block {
+    background: #f5f5f5;
+    border: 0.5pt solid #000000;
+    padding: 8pt;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 8pt;
+    margin: 10pt 0;
+    white-space: pre-wrap;
+}
+.equation {
+    text-align: center;
+    margin: 12pt 0;
+    font-style: italic;
+}
+.reference-item {
+    font-size: 9pt;
+    text-indent: -20pt;
+    padding-left: 20pt;
+    margin-bottom: 4pt;
+}
+.two-column {
+    column-count: 2;
+    column-gap: 20pt;
+}
+ul, ol {
+    margin: 8pt 0;
+    padding-left: 20pt;
+}
+li {
+    margin-bottom: 4pt;
+}
+.roman-numeral {
+    list-style-type: upper-roman;
+}
+.section-number {
+    font-weight: bold;
+}
+hr {
+    border: none;
+    border-top: 0.5pt solid #000000;
+    margin: 20pt 0;
+}
+</style>
+</head>
+<body>
+
+<!-- TITLE SECTION -->
+<div class="title-section">
+    <div class="paper-title">FarmVoice Pro: An AI-Powered Agricultural Assistant<br>with Voice Interaction Capabilities</div>
+    <div class="author-info">Technical Project Analysis Report</div>
+    <div class="affiliation">
+        Version 1.0.0 | December 2025<br>
+        Comprehensive System Documentation and Technical Specifications
+    </div>
+</div>
+
+<!-- ABSTRACT -->
+<div class="abstract-section">
+    <div class="abstract-title">Abstract</div>
+    <div class="abstract-text">
+        This technical report presents a comprehensive analysis of FarmVoice Pro, an AI-powered agricultural assistant application designed to support farmers through voice-based interactions, intelligent crop recommendations, disease diagnosis, and real-time market intelligence. The system employs a modern full-stack architecture utilizing Next.js 15 with React 19 for the frontend layer, FastAPI for the backend API services, and Supabase (PostgreSQL) for data persistence. The application integrates advanced AI capabilities through Google Gemini API and Ollama for natural language processing. This document provides detailed technical specifications including system architecture, component analysis, database schema design, API endpoint documentation, and strategic recommendations for future development. The codebase comprises 18 React components, 75+ API endpoints, 10 database tables, and specialized modules for voice processing, web scraping, and agricultural data analysis.
+    </div>
+    <div class="keywords">
+        <span class="keywords-label">Keywords—</span>Agricultural Technology, Voice Assistant, Artificial Intelligence, Machine Learning, Crop Recommendation, Disease Diagnosis, FastAPI, Next.js, React, Natural Language Processing
+    </div>
+</div>
+
+<hr>
+
+<!-- SECTION I: INTRODUCTION -->
+<h1>I. Introduction</h1>
+
+<p>
+Modern agriculture faces significant challenges in adopting technology due to accessibility barriers, especially in developing regions. FarmVoice Pro addresses this gap by providing an intuitive, voice-first interface that enables farmers to access critical agricultural information without requiring technical expertise or literacy skills. The application serves as a comprehensive digital companion, offering personalized crop recommendations, disease detection capabilities, market price tracking, and weather-based farming advisories.
+</p>
+
+<p>
+The primary objectives of this system are: (1) to democratize access to agricultural knowledge through voice interaction, (2) to leverage artificial intelligence for personalized farming recommendations, (3) to provide real-time market intelligence and weather integration, and (4) to create a scalable, maintainable platform for future agricultural technology innovations.
+</p>
+
+<p>
+This report is organized as follows: Section II presents the technology stack and development environment. Section III details the system architecture. Section IV describes the frontend implementation. Section V covers the backend architecture and API design. Section VI documents the database schema. Section VII analyzes key features. Section VIII provides API specifications. Section IX discusses security considerations. Section X outlines deployment configurations. Section XI presents recommendations, and Section XII concludes the report.
+</p>
+
+<!-- SECTION II: TECHNOLOGY STACK -->
+<h1>II. Technology Stack</h1>
+
+<h2>A. Frontend Technologies</h2>
+
+<p>
+The frontend layer is built using Next.js 15.1.0, a React-based framework that provides server-side rendering, static site generation, and an optimized App Router architecture. React 19.0.0 serves as the core UI library, enabling component-based development with hooks for state management.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE I.</span> Frontend Technology Specifications</p>
+<table>
+    <tr>
+        <th>Technology</th>
+        <th>Version</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>Next.js</td>
+        <td>15.1.0</td>
+        <td>React framework with App Router</td>
+    </tr>
+    <tr>
+        <td>React</td>
+        <td>19.0.0</td>
+        <td>Component-based UI library</td>
+    </tr>
+    <tr>
+        <td>TypeScript</td>
+        <td>5.7.2</td>
+        <td>Type-safe JavaScript superset</td>
+    </tr>
+    <tr>
+        <td>Tailwind CSS</td>
+        <td>3.4.17</td>
+        <td>Utility-first CSS framework</td>
+    </tr>
+    <tr>
+        <td>Framer Motion</td>
+        <td>11.15.0</td>
+        <td>Animation library</td>
+    </tr>
+    <tr>
+        <td>Recharts</td>
+        <td>2.15.0</td>
+        <td>Data visualization components</td>
+    </tr>
+</table>
+
+<h2>B. Backend Technologies</h2>
+
+<p>
+The backend services are implemented using FastAPI 0.115.5, a modern Python web framework known for high performance and automatic API documentation generation. The backend leverages Pydantic 2.10.4 for data validation and serialization.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE II.</span> Backend Technology Specifications</p>
+<table>
+    <tr>
+        <th>Technology</th>
+        <th>Version</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>FastAPI</td>
+        <td>0.115.5</td>
+        <td>Async web framework</td>
+    </tr>
+    <tr>
+        <td>Python</td>
+        <td>3.11+</td>
+        <td>Backend runtime environment</td>
+    </tr>
+    <tr>
+        <td>Uvicorn</td>
+        <td>0.34.0</td>
+        <td>ASGI server implementation</td>
+    </tr>
+    <tr>
+        <td>Pydantic</td>
+        <td>2.10.4</td>
+        <td>Data validation framework</td>
+    </tr>
+    <tr>
+        <td>Supabase</td>
+        <td>2.11.0</td>
+        <td>PostgreSQL database client</td>
+    </tr>
+    <tr>
+        <td>Google Generative AI</td>
+        <td>0.8.3</td>
+        <td>Gemini API integration</td>
+    </tr>
+    <tr>
+        <td>Ollama</td>
+        <td>0.4.4</td>
+        <td>Local LLM support</td>
+    </tr>
+    <tr>
+        <td>BeautifulSoup4</td>
+        <td>4.12.3</td>
+        <td>Web scraping utilities</td>
+    </tr>
+    <tr>
+        <td>Mangum</td>
+        <td>0.19.0</td>
+        <td>Serverless adapter (AWS Lambda)</td>
+    </tr>
+</table>
+
+<!-- SECTION III: SYSTEM ARCHITECTURE -->
+<h1>III. System Architecture</h1>
+
+<h2>A. Architectural Overview</h2>
+
+<p>
+FarmVoice Pro implements a three-tier architecture consisting of a presentation layer, an application layer, and a data layer. The system follows the Model-View-Controller (MVC) design pattern with clear separation of concerns between components.
+</p>
+
+<div class="figure-container">
+<pre style="font-family: 'Courier New', monospace; font-size: 9pt; text-align: left; display: inline-block; border: 1pt solid #000; padding: 15pt;">
++------------------------------------------------------------------+
+|                        PRESENTATION LAYER                         |
+|  +------------------------------------------------------------+  |
+|  |  Next.js 15 (React 19) + TypeScript + Tailwind CSS         |  |
+|  |  - 18 React Components    - 14 Application Pages           |  |
+|  |  - Framer Motion          - Web Speech API                  |  |
+|  +------------------------------------------------------------+  |
++------------------------------------------------------------------+
+                              |
+                              | HTTP/WebSocket
+                              v
++------------------------------------------------------------------+
+|                       APPLICATION LAYER                           |
+|  +------------------------------------------------------------+  |
+|  |  FastAPI + Python 3.11+                                     |  |
+|  |  - 75+ API Endpoints      - 5 API Routers                  |  |
+|  |  - 6 Business Services    - 11 Voice Service Modules       |  |
+|  |  - Web Scraping (932 lines)                                |  |
+|  +------------------------------------------------------------+  |
++------------------------------------------------------------------+
+                              |
+                              | SQL/REST API
+                              v
++------------------------------------------------------------------+
+|                          DATA LAYER                               |
+|  +------------------------+  +--------------------------------+  |
+|  |  Supabase (PostgreSQL) |  |  External APIs                |  |
+|  |  - 10 Database Tables  |  |  - Google Gemini AI           |  |
+|  |  - JSONB Support       |  |  - Open-Meteo Weather         |  |
+|  |  - UUID Primary Keys   |  |  - SoilGrids API              |  |
+|  +------------------------+  +--------------------------------+  |
++------------------------------------------------------------------+
+</pre>
+<div class="figure-caption"><span class="figure-caption-label">Fig. 1.</span> FarmVoice Pro System Architecture Diagram</div>
+</div>
+
+<h2>B. Component Interaction</h2>
+
+<p>
+The frontend communicates with the backend through a RESTful API interface, with WebSocket support for real-time voice interactions. The backend orchestrates data flow between the database, external AI services, and web scraping modules.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE III.</span> Architectural Layers and Responsibilities</p>
+<table>
+    <tr>
+        <th>Layer</th>
+        <th>Components</th>
+        <th>Responsibilities</th>
+    </tr>
+    <tr>
+        <td>Presentation</td>
+        <td>Next.js, React, TypeScript</td>
+        <td>User interface, routing, state management</td>
+    </tr>
+    <tr>
+        <td>API Gateway</td>
+        <td>FastAPI, Routers</td>
+        <td>Request handling, authentication, validation</td>
+    </tr>
+    <tr>
+        <td>Business Logic</td>
+        <td>Services, Engines</td>
+        <td>Core algorithms, data processing</td>
+    </tr>
+    <tr>
+        <td>Data Access</td>
+        <td>Supabase Client</td>
+        <td>Database operations, query execution</td>
+    </tr>
+    <tr>
+        <td>External Services</td>
+        <td>Gemini AI, Open-Meteo</td>
+        <td>AI inference, external data retrieval</td>
+    </tr>
+</table>
+
+<!-- SECTION IV: FRONTEND IMPLEMENTATION -->
+<h1>IV. Frontend Implementation</h1>
+
+<h2>A. Project Structure</h2>
+
+<p>
+The frontend follows Next.js App Router conventions with organized directories for pages, components, utilities, and assets. The total frontend codebase includes 18 reusable React components and 14 distinct application pages.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE IV.</span> Frontend Directory Structure</p>
+<table>
+    <tr>
+        <th>Directory</th>
+        <th>Contents</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>/app</td>
+        <td>21 items</td>
+        <td>Next.js App Router pages and layouts</td>
+    </tr>
+    <tr>
+        <td>/components</td>
+        <td>18 files</td>
+        <td>Reusable React components</td>
+    </tr>
+    <tr>
+        <td>/lib</td>
+        <td>4 files</td>
+        <td>Utility functions and API client</td>
+    </tr>
+    <tr>
+        <td>/context</td>
+        <td>1 file</td>
+        <td>React Context providers</td>
+    </tr>
+    <tr>
+        <td>/types</td>
+        <td>1 file</td>
+        <td>TypeScript type definitions</td>
+    </tr>
+    <tr>
+        <td>/public</td>
+        <td>Various</td>
+        <td>Static assets</td>
+    </tr>
+</table>
+
+<h2>B. Component Analysis</h2>
+
+<p>
+The component library comprises specialized UI elements for agricultural data visualization, user interaction, and system navigation. The following table presents the primary components ordered by file size complexity.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE V.</span> React Component Specifications</p>
+<table>
+    <tr>
+        <th>Component</th>
+        <th>Size (bytes)</th>
+        <th>Lines</th>
+        <th>Function</th>
+    </tr>
+    <tr>
+        <td>CropSelection.tsx</td>
+        <td>35,793</td>
+        <td>~800</td>
+        <td>Crop selection wizard interface</td>
+    </tr>
+    <tr>
+        <td>HomePage.tsx</td>
+        <td>31,424</td>
+        <td>628</td>
+        <td>Main dashboard with widgets</td>
+    </tr>
+    <tr>
+        <td>CropDetailsModal.tsx</td>
+        <td>30,546</td>
+        <td>~700</td>
+        <td>Detailed crop information modal</td>
+    </tr>
+    <tr>
+        <td>CropDashboard.tsx</td>
+        <td>20,077</td>
+        <td>~450</td>
+        <td>Crop management dashboard</td>
+    </tr>
+    <tr>
+        <td>Onboarding.tsx</td>
+        <td>16,483</td>
+        <td>~380</td>
+        <td>User onboarding flow</td>
+    </tr>
+    <tr>
+        <td>VoiceAssistant.tsx</td>
+        <td>13,639</td>
+        <td>409</td>
+        <td>Voice interaction interface</td>
+    </tr>
+    <tr>
+        <td>DiseaseManagement.tsx</td>
+        <td>13,442</td>
+        <td>~320</td>
+        <td>Disease diagnosis interface</td>
+    </tr>
+    <tr>
+        <td>WeatherWidget.tsx</td>
+        <td>9,924</td>
+        <td>~240</td>
+        <td>Weather information display</td>
+    </tr>
+    <tr>
+        <td>LoginPage.tsx</td>
+        <td>9,308</td>
+        <td>~220</td>
+        <td>Authentication interface</td>
+    </tr>
+    <tr>
+        <td>ProfilePage.tsx</td>
+        <td>8,713</td>
+        <td>~210</td>
+        <td>User profile management</td>
+    </tr>
+</table>
+
+<h2>C. Application Pages</h2>
+
+<p>
+The application implements 14 distinct pages accessible through the /home route hierarchy, providing comprehensive coverage of agricultural management functions.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE VI.</span> Application Page Routes</p>
+<table>
+    <tr>
+        <th>Page</th>
+        <th>Route</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>Dashboard</td>
+        <td>/home</td>
+        <td>Main dashboard with summary widgets</td>
+    </tr>
+    <tr>
+        <td>Voice Assistant</td>
+        <td>/home/voice-assistant</td>
+        <td>Voice-based query interface</td>
+    </tr>
+    <tr>
+        <td>Crop Recommendation</td>
+        <td>/home/crop-recommendation</td>
+        <td>AI-powered crop suggestions</td>
+    </tr>
+    <tr>
+        <td>Disease Management</td>
+        <td>/home/disease-management</td>
+        <td>Plant disease diagnosis tool</td>
+    </tr>
+    <tr>
+        <td>Market Prices</td>
+        <td>/home/market-prices</td>
+        <td>Commodity price tracker</td>
+    </tr>
+    <tr>
+        <td>Weather</td>
+        <td>/home/weather</td>
+        <td>Weather forecasts and alerts</td>
+    </tr>
+    <tr>
+        <td>Tasks</td>
+        <td>/home/tasks</td>
+        <td>Daily task management</td>
+    </tr>
+    <tr>
+        <td>Profile</td>
+        <td>/home/profile</td>
+        <td>User profile settings</td>
+    </tr>
+    <tr>
+        <td>Analytics</td>
+        <td>/home/analytics</td>
+        <td>Farm performance analytics</td>
+    </tr>
+    <tr>
+        <td>Crop Calendar</td>
+        <td>/home/crop-calendar</td>
+        <td>Seasonal planning tool</td>
+    </tr>
+</table>
+
+<!-- SECTION V: BACKEND ARCHITECTURE -->
+<h1>V. Backend Architecture</h1>
+
+<h2>A. Main Application Module</h2>
+
+<p>
+The backend application is centralized in main.py, comprising 1,791 lines of code with 75+ function and class definitions. This module serves as the primary API gateway, implementing authentication, request validation, and business logic orchestration.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE VII.</span> Backend Module Statistics</p>
+<table>
+    <tr>
+        <th>Module</th>
+        <th>Size (bytes)</th>
+        <th>Lines</th>
+        <th>Functions/Classes</th>
+    </tr>
+    <tr>
+        <td>main.py</td>
+        <td>72,436</td>
+        <td>1,791</td>
+        <td>75+</td>
+    </tr>
+    <tr>
+        <td>web_scraper.py</td>
+        <td>45,282</td>
+        <td>932</td>
+        <td>20</td>
+    </tr>
+    <tr>
+        <td>crop_recommender.py</td>
+        <td>14,007</td>
+        <td>~320</td>
+        <td>12</td>
+    </tr>
+</table>
+
+<h2>B. API Router Modules</h2>
+
+<p>
+The backend implements a modular routing architecture with five dedicated routers handling specific functional domains.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE VIII.</span> API Router Specifications</p>
+<table>
+    <tr>
+        <th>Router</th>
+        <th>Size (bytes)</th>
+        <th>Endpoints</th>
+        <th>Domain</th>
+    </tr>
+    <tr>
+        <td>features_router.py</td>
+        <td>17,581</td>
+        <td>15+</td>
+        <td>Extended feature endpoints</td>
+    </tr>
+    <tr>
+        <td>home_router.py</td>
+        <td>3,590</td>
+        <td>5</td>
+        <td>Dashboard data endpoints</td>
+    </tr>
+    <tr>
+        <td>voice_router.py</td>
+        <td>2,846</td>
+        <td>4</td>
+        <td>Voice processing endpoints</td>
+    </tr>
+    <tr>
+        <td>disease_router.py</td>
+        <td>1,476</td>
+        <td>3</td>
+        <td>Disease diagnosis endpoints</td>
+    </tr>
+    <tr>
+        <td>market_router.py</td>
+        <td>1,290</td>
+        <td>2</td>
+        <td>Market price endpoints</td>
+    </tr>
+</table>
+
+<h2>C. Business Service Modules</h2>
+
+<p>
+Core business logic is encapsulated within six specialized service modules, each responsible for a distinct functional domain.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE IX.</span> Business Service Specifications</p>
+<table>
+    <tr>
+        <th>Service</th>
+        <th>Size (bytes)</th>
+        <th>Responsibility</th>
+    </tr>
+    <tr>
+        <td>task_repository.py</td>
+        <td>5,755</td>
+        <td>Task data persistence and retrieval</td>
+    </tr>
+    <tr>
+        <td>weather_service.py</td>
+        <td>5,197</td>
+        <td>Weather data fetching and processing</td>
+    </tr>
+    <tr>
+        <td>task_engine.py</td>
+        <td>4,109</td>
+        <td>Task generation algorithms</td>
+    </tr>
+    <tr>
+        <td>soil_service.py</td>
+        <td>2,682</td>
+        <td>Soil data analysis and classification</td>
+    </tr>
+    <tr>
+        <td>market_service.py</td>
+        <td>2,405</td>
+        <td>Market price retrieval and analysis</td>
+    </tr>
+    <tr>
+        <td>disease_engine.py</td>
+        <td>2,117</td>
+        <td>Disease detection algorithms</td>
+    </tr>
+</table>
+
+<h2>D. Voice Service Module</h2>
+
+<p>
+The voice service subsystem comprises 11 specialized modules handling real-time voice communication, speech processing, and language model integration.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE X.</span> Voice Service Module Specifications</p>
+<table>
+    <tr>
+        <th>Module</th>
+        <th>Size (bytes)</th>
+        <th>Function</th>
+    </tr>
+    <tr>
+        <td>websocket_handler.py</td>
+        <td>11,541</td>
+        <td>WebSocket connection management</td>
+    </tr>
+    <tr>
+        <td>canvas_builder.py</td>
+        <td>11,343</td>
+        <td>Dynamic UI canvas generation</td>
+    </tr>
+    <tr>
+        <td>observability.py</td>
+        <td>8,547</td>
+        <td>Logging and monitoring utilities</td>
+    </tr>
+    <tr>
+        <td>config.py</td>
+        <td>8,423</td>
+        <td>Voice service configuration</td>
+    </tr>
+    <tr>
+        <td>planner.py</td>
+        <td>7,114</td>
+        <td>Query planning and routing</td>
+    </tr>
+    <tr>
+        <td>cache_manager.py</td>
+        <td>5,602</td>
+        <td>Response caching mechanism</td>
+    </tr>
+    <tr>
+        <td>stt_service.py</td>
+        <td>5,251</td>
+        <td>Speech-to-text processing</td>
+    </tr>
+    <tr>
+        <td>tts_service.py</td>
+        <td>4,320</td>
+        <td>Text-to-speech synthesis</td>
+    </tr>
+    <tr>
+        <td>llm_service.py</td>
+        <td>3,492</td>
+        <td>Language model integration</td>
+    </tr>
+    <tr>
+        <td>tool_adapters.py</td>
+        <td>3,147</td>
+        <td>External tool adapters</td>
+    </tr>
+</table>
+
+<!-- SECTION VI: DATABASE SCHEMA -->
+<h1>VI. Database Schema Design</h1>
+
+<h2>A. Schema Overview</h2>
+
+<p>
+The database layer is implemented using Supabase, a PostgreSQL-based backend-as-a-service platform. The schema comprises 10 tables with proper foreign key relationships, indexes for performance optimization, and JSONB columns for flexible data storage.
+</p>
+
+<h2>B. Entity-Relationship Model</h2>
+
+<div class="figure-container">
+<pre style="font-family: 'Courier New', monospace; font-size: 8pt; text-align: left; display: inline-block; border: 1pt solid #000; padding: 15pt;">
+                              +----------------+
+                              |     USERS      |
+                              |----------------|
+                              | id (PK)        |
+                              | email          |
+                              | password_hash  |
+                              | name           |
+                              | created_at     |
+                              +-------+--------+
+                                      |
+        +------------+----------------+----------------+----------------+
+        |            |                |                |                |
+        v            v                v                v                v
++---------------+ +---------------+ +---------------+ +---------------+ +---------------+
+|FARMER_PROFILES| |SELECTED_CROPS | | DAILY_TASKS   | |NOTIFICATIONS  | |VOICE_QUERIES  |
+|---------------| |---------------| |---------------| |---------------| |---------------|
+|id (PK)        | |id (PK)        | |id (PK)        | |id (PK)        | |id (PK)        |
+|user_id (FK)   | |user_id (FK)   | |user_id (FK)   | |user_id (FK)   | |user_id (FK)   |
+|full_name      | |crop_name      | |crop_id (FK)   | |title          | |query          |
+|phone          | |planting_date  | |task_name      | |message        | |response       |
+|pincode        | |suitability    | |scheduled_date | |type           | |created_at     |
+|latitude       | |crop_details   | |completed      | |read           | +---------------+
+|longitude      | |farming_guide  | |priority       | |created_at     |
+|acres_of_land  | |profit_est     | +---------------+ +---------------+
+|soil_type      | +-------+-------+
++---------------+         |
+                          v
+                  +---------------+
+                  | CROP_HEALTH   |
+                  |---------------|
+                  | id (PK)       |
+                  | crop_id (FK)  |
+                  | health_score  |
+                  | growth_stage  |
+                  +---------------+
+</pre>
+<div class="figure-caption"><span class="figure-caption-label">Fig. 2.</span> Entity-Relationship Diagram</div>
+</div>
+
+<h2>C. Table Definitions</h2>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XI.</span> Users Table Schema</p>
+<table>
+    <tr>
+        <th>Column</th>
+        <th>Data Type</th>
+        <th>Constraints</th>
+    </tr>
+    <tr>
+        <td>id</td>
+        <td>UUID</td>
+        <td>PRIMARY KEY, DEFAULT uuid_generate_v4()</td>
+    </tr>
+    <tr>
+        <td>email</td>
+        <td>VARCHAR(255)</td>
+        <td>UNIQUE, NOT NULL</td>
+    </tr>
+    <tr>
+        <td>password_hash</td>
+        <td>TEXT</td>
+        <td>NOT NULL</td>
+    </tr>
+    <tr>
+        <td>name</td>
+        <td>VARCHAR(255)</td>
+        <td>NULLABLE</td>
+    </tr>
+    <tr>
+        <td>created_at</td>
+        <td>TIMESTAMP WITH TIME ZONE</td>
+        <td>DEFAULT NOW()</td>
+    </tr>
+</table>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XII.</span> Farmer Profiles Table Schema</p>
+<table>
+    <tr>
+        <th>Column</th>
+        <th>Data Type</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>id</td>
+        <td>UUID</td>
+        <td>Primary identifier</td>
+    </tr>
+    <tr>
+        <td>user_id</td>
+        <td>UUID</td>
+        <td>Foreign key to users table</td>
+    </tr>
+    <tr>
+        <td>full_name</td>
+        <td>VARCHAR(255)</td>
+        <td>Farmer's full name</td>
+    </tr>
+    <tr>
+        <td>pincode</td>
+        <td>VARCHAR(10)</td>
+        <td>Indian postal code</td>
+    </tr>
+    <tr>
+        <td>latitude</td>
+        <td>DECIMAL(10,8)</td>
+        <td>GPS latitude coordinate</td>
+    </tr>
+    <tr>
+        <td>longitude</td>
+        <td>DECIMAL(11,8)</td>
+        <td>GPS longitude coordinate</td>
+    </tr>
+    <tr>
+        <td>acres_of_land</td>
+        <td>DECIMAL(10,2)</td>
+        <td>Total farm area</td>
+    </tr>
+    <tr>
+        <td>soil_type</td>
+        <td>VARCHAR(50)</td>
+        <td>Soil classification</td>
+    </tr>
+    <tr>
+        <td>climate_type</td>
+        <td>VARCHAR(50)</td>
+        <td>Climate zone classification</td>
+    </tr>
+</table>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XIII.</span> Selected Crops Table Schema</p>
+<table>
+    <tr>
+        <th>Column</th>
+        <th>Data Type</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>id</td>
+        <td>UUID</td>
+        <td>Primary identifier</td>
+    </tr>
+    <tr>
+        <td>user_id</td>
+        <td>UUID</td>
+        <td>Foreign key to users</td>
+    </tr>
+    <tr>
+        <td>crop_name</td>
+        <td>VARCHAR(100)</td>
+        <td>Name of selected crop</td>
+    </tr>
+    <tr>
+        <td>planting_date</td>
+        <td>DATE</td>
+        <td>Date of planting</td>
+    </tr>
+    <tr>
+        <td>suitability_score</td>
+        <td>INTEGER</td>
+        <td>AI-generated suitability score</td>
+    </tr>
+    <tr>
+        <td>crop_details</td>
+        <td>JSONB</td>
+        <td>Detailed crop information</td>
+    </tr>
+    <tr>
+        <td>farming_guide</td>
+        <td>JSONB</td>
+        <td>Step-by-step farming instructions</td>
+    </tr>
+    <tr>
+        <td>disease_predictions</td>
+        <td>JSONB</td>
+        <td>Predicted disease risks</td>
+    </tr>
+    <tr>
+        <td>profit_estimation</td>
+        <td>JSONB</td>
+        <td>Expected profit calculations</td>
+    </tr>
+</table>
+
+<!-- SECTION VII: KEY FEATURES -->
+<h1>VII. Key Features Analysis</h1>
+
+<h2>A. Voice Assistant System</h2>
+
+<p>
+The voice assistant implements a multi-modal interaction system supporting both real-time WebSocket communication and REST API fallback. The system integrates Web Speech API for browser-based speech recognition and optional server-side processing using faster-whisper.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XIV.</span> Voice System Components</p>
+<table>
+    <tr>
+        <th>Component</th>
+        <th>Technology</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td>Speech Recognition</td>
+        <td>Web Speech API / faster-whisper</td>
+        <td>Convert speech to text</td>
+    </tr>
+    <tr>
+        <td>Natural Language Processing</td>
+        <td>Google Gemini / Ollama</td>
+        <td>Query understanding and response</td>
+    </tr>
+    <tr>
+        <td>Speech Synthesis</td>
+        <td>Browser TTS API</td>
+        <td>Convert text to speech</td>
+    </tr>
+    <tr>
+        <td>Real-time Communication</td>
+        <td>WebSocket</td>
+        <td>Low-latency bidirectional streaming</td>
+    </tr>
+</table>
+
+<h2>B. Crop Recommendation Engine</h2>
+
+<p>
+The crop recommendation system leverages multiple data sources to provide personalized suggestions based on geographical, climatic, and soil conditions.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XV.</span> Crop Recommendation Data Sources</p>
+<table>
+    <tr>
+        <th>Data Source</th>
+        <th>API/Method</th>
+        <th>Information Provided</th>
+    </tr>
+    <tr>
+        <td>OpenStreetMap</td>
+        <td>Nominatim API</td>
+        <td>Geocoding, location data</td>
+    </tr>
+    <tr>
+        <td>SoilGrids</td>
+        <td>REST API</td>
+        <td>Soil composition, texture, pH</td>
+    </tr>
+    <tr>
+        <td>Open-Meteo</td>
+        <td>REST API</td>
+        <td>Weather conditions, forecasts</td>
+    </tr>
+    <tr>
+        <td>Government Data</td>
+        <td>Pattern matching</td>
+        <td>Regional crop suitability</td>
+    </tr>
+</table>
+
+<h2>C. Disease Diagnosis System</h2>
+
+<p>
+The disease diagnosis module employs symptom-based analysis with optional image upload support, utilizing web scraping from authoritative agricultural databases for treatment recommendations.
+</p>
+
+<!-- SECTION VIII: API SPECIFICATIONS -->
+<h1>VIII. API Endpoint Specifications</h1>
+
+<h2>A. Authentication Endpoints</h2>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XVI.</span> Authentication API Endpoints</p>
+<table>
+    <tr>
+        <th>Method</th>
+        <th>Endpoint</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/api/auth/register</td>
+        <td>Register new user account</td>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/api/auth/login</td>
+        <td>Authenticate user credentials</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/api/auth/me</td>
+        <td>Retrieve current user information</td>
+    </tr>
+</table>
+
+<h2>B. Crop Management Endpoints</h2>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XVII.</span> Crop Management API Endpoints</p>
+<table>
+    <tr>
+        <th>Method</th>
+        <th>Endpoint</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/api/crop/recommend</td>
+        <td>Get basic crop recommendations</td>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/api/crop/recommend-by-pincode</td>
+        <td>Location-based recommendations</td>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/api/crop/check-suitability</td>
+        <td>Check crop suitability for location</td>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/api/crop/select</td>
+        <td>Select crop for cultivation</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/api/crops/selected</td>
+        <td>Retrieve selected crops list</td>
+    </tr>
+</table>
+
+<h2>C. Voice and Utility Endpoints</h2>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XVIII.</span> Voice and Utility API Endpoints</p>
+<table>
+    <tr>
+        <th>Method</th>
+        <th>Endpoint</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>POST</td>
+        <td>/api/voice/query</td>
+        <td>Process voice query (REST)</td>
+    </tr>
+    <tr>
+        <td>WebSocket</td>
+        <td>/ws/voice</td>
+        <td>Real-time voice communication</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/api/weather</td>
+        <td>Retrieve weather data</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/api/market/prices</td>
+        <td>Get commodity market prices</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/api/tasks</td>
+        <td>Retrieve daily farming tasks</td>
+    </tr>
+    <tr>
+        <td>GET</td>
+        <td>/api/notifications</td>
+        <td>Get user notifications</td>
+    </tr>
+</table>
+
+<!-- SECTION IX: SECURITY -->
+<h1>IX. Security Implementation</h1>
+
+<h2>A. Authentication Mechanism</h2>
+
+<p>
+The application implements JWT (JSON Web Token) based authentication with bcrypt password hashing. Tokens expire after 30 minutes by default, requiring re-authentication for continued access.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XIX.</span> Security Implementation Details</p>
+<table>
+    <tr>
+        <th>Component</th>
+        <th>Implementation</th>
+    </tr>
+    <tr>
+        <td>Authentication Protocol</td>
+        <td>JWT (JSON Web Token)</td>
+    </tr>
+    <tr>
+        <td>Password Hashing</td>
+        <td>Bcrypt with 72-byte truncation</td>
+    </tr>
+    <tr>
+        <td>Token Expiration</td>
+        <td>30 minutes (configurable)</td>
+    </tr>
+    <tr>
+        <td>Security Scheme</td>
+        <td>HTTPBearer</td>
+    </tr>
+    <tr>
+        <td>Algorithm</td>
+        <td>HS256</td>
+    </tr>
+</table>
+
+<h2>B. Environment Configuration</h2>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XX.</span> Required Environment Variables</p>
+<table>
+    <tr>
+        <th>Variable</th>
+        <th>Purpose</th>
+        <th>Required</th>
+    </tr>
+    <tr>
+        <td>SUPABASE_URL</td>
+        <td>Database connection URL</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>SUPABASE_KEY</td>
+        <td>Supabase anonymous key</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>JWT_SECRET_KEY</td>
+        <td>Token signing secret</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>CORS_ORIGINS</td>
+        <td>Allowed CORS origins</td>
+        <td>Yes</td>
+    </tr>
+    <tr>
+        <td>GOOGLE_API_KEY</td>
+        <td>Gemini AI API key</td>
+        <td>Optional</td>
+    </tr>
+</table>
+
+<!-- SECTION X: DEPLOYMENT -->
+<h1>X. Deployment Configuration</h1>
+
+<h2>A. Supported Platforms</h2>
+
+<p>
+The application supports deployment on multiple cloud platforms including Vercel for frontend hosting and serverless functions, and Netlify as an alternative deployment target.
+</p>
+
+<p class="table-caption"><span class="table-caption-label">TABLE XXI.</span> Deployment Platform Configuration</p>
+<table>
+    <tr>
+        <th>Platform</th>
+        <th>Configuration</th>
+        <th>Status</th>
+    </tr>
+    <tr>
+        <td>Vercel</td>
+        <td>vercel.json</td>
+        <td>Configured</td>
+    </tr>
+    <tr>
+        <td>Netlify</td>
+        <td>netlify.toml</td>
+        <td>Configured</td>
+    </tr>
+    <tr>
+        <td>Local Development</td>
+        <td>npm/uvicorn</td>
+        <td>Active</td>
+    </tr>
+</table>
+
+<h2>B. Development Setup</h2>
+
+<p>
+The following commands initiate the development environment:
+</p>
+
+<div class="code-block">
+# Frontend Development Server
+npm install
+npm run dev
+
+# Backend Development Server
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+</div>
+
+<!-- SECTION XI: RECOMMENDATIONS -->
+<h1>XI. Recommendations</h1>
+
+<h2>A. Code Quality Improvements</h2>
+
+<ol>
+    <li><strong>Module Decomposition:</strong> The main.py file (1,791 lines) should be refactored into smaller, focused modules to improve maintainability and testability.</li>
+    <li><strong>Type Safety:</strong> Enable TypeScript strict mode in the frontend to catch type-related errors during development.</li>
+    <li><strong>Error Handling:</strong> Implement comprehensive error boundaries in React components to prevent cascading failures.</li>
+    <li><strong>Documentation:</strong> Add JSDoc/docstring comments to all public functions and classes.</li>
+</ol>
+
+<h2>B. Performance Optimizations</h2>
+
+<ol>
+    <li><strong>Caching Layer:</strong> Implement Redis or similar caching solution for frequently accessed API responses.</li>
+    <li><strong>Connection Pooling:</strong> Add database connection pooling to improve concurrent request handling.</li>
+    <li><strong>Image Optimization:</strong> Utilize Next.js Image component with proper sizing and lazy loading.</li>
+    <li><strong>Bundle Analysis:</strong> Conduct regular bundle size analysis to identify optimization opportunities.</li>
+</ol>
+
+<h2>C. Security Enhancements</h2>
+
+<ol>
+    <li><strong>Rate Limiting:</strong> Implement rate limiting on authentication endpoints to prevent brute-force attacks.</li>
+    <li><strong>CSRF Protection:</strong> Add Cross-Site Request Forgery protection for state-changing operations.</li>
+    <li><strong>Secure Token Storage:</strong> Consider HTTP-only cookies for token storage instead of localStorage.</li>
+    <li><strong>Input Sanitization:</strong> Enhance input validation to prevent injection attacks.</li>
+</ol>
+
+<!-- SECTION XII: CONCLUSION -->
+<h1>XII. Conclusion</h1>
+
+<p>
+FarmVoice Pro represents a comprehensive implementation of modern agricultural technology, combining voice-first interaction paradigms with AI-powered analytics to deliver value to farmers. The system's architecture demonstrates sound software engineering principles with clear separation of concerns between frontend, backend, and data layers.
+</p>
+
+<p>
+Key achievements of this implementation include:
+</p>
+
+<ol type="1">
+    <li>A complete voice assistant system with real-time WebSocket communication and REST API fallback capabilities.</li>
+    <li>Integration of multiple AI services (Google Gemini, Ollama) for natural language processing and crop recommendations.</li>
+    <li>Comprehensive data aggregation from external sources (weather, soil, market prices) through web scraping and API integrations.</li>
+    <li>A scalable database schema supporting complex agricultural data relationships with JSONB flexibility.</li>
+    <li>Multi-platform deployment support (Vercel, Netlify) with serverless function capabilities.</li>
+</ol>
+
+<p>
+The codebase totals approximately 18 React components, 75+ API endpoints, 10 database tables, and specialized modules for voice processing and agricultural data analysis. Future development should prioritize the recommendations outlined in Section XI to enhance code quality, performance, and security.
+</p>
+
+<hr>
+
+<!-- REFERENCES -->
+<h1>References</h1>
+
+<div class="reference-item">[1] FastAPI Documentation, "FastAPI - Modern, Fast Web Framework for Building APIs," Available: https://fastapi.tiangolo.com/</div>
+<div class="reference-item">[2] Next.js Documentation, "The React Framework for the Web," Available: https://nextjs.org/docs</div>
+<div class="reference-item">[3] Supabase Documentation, "The Open Source Firebase Alternative," Available: https://supabase.com/docs</div>
+<div class="reference-item">[4] Google AI for Developers, "Gemini API Documentation," Available: https://ai.google.dev/</div>
+<div class="reference-item">[5] Open-Meteo, "Free Weather API," Available: https://open-meteo.com/</div>
+<div class="reference-item">[6] ISRIC World Soil Information, "SoilGrids API," Available: https://soilgrids.org/</div>
+<div class="reference-item">[7] React Documentation, "React - A JavaScript Library for Building User Interfaces," Available: https://react.dev/</div>
+<div class="reference-item">[8] Tailwind CSS Documentation, "Utility-First CSS Framework," Available: https://tailwindcss.com/docs</div>
+
+<hr>
+
+<p style="text-align: center; font-size: 9pt; margin-top: 30pt;">
+<strong>Document Information</strong><br>
+Report Version: 1.0.0 | Generated: December 26, 2025<br>
+Project: FarmVoice Pro | License: MIT License
+</p>
+
+</body>
+</html>

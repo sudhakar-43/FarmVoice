@@ -1,0 +1,4 @@
+﻿SUPABASE_URL=https://ecdgvpxnlahxfbeevfqq.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZGd2cHhubGFoeGZiZWV2ZnFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUzMzAyNDIsImV4cCI6MjA1MDkwNjI0Mn0.WBBAWUBtU+Ybqut6eb67tdM4vP0SW09cX5vt65PTUoTUEw==
+MARKET_SCRAPER_ENABLED=true
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001

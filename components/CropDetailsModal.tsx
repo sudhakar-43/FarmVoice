@@ -56,7 +56,7 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("farmvoice_token") : null;
       if (token) {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/location/pincode/${pincode}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/location/pincode/${pincode}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (response.ok) {
@@ -84,7 +84,7 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
       const pincode = locationData?.pincode || crop.pincode || (typeof window !== "undefined" ? localStorage.getItem("farmvoice_pincode") : null);
       
       if (token && pincode) {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/crop/recommend-by-pincode`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/crop/recommend-by-pincode`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
