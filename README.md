@@ -147,8 +147,7 @@ FarmVoice/
 │   └── voice_service/   # Voice processing
 ├── lib/                  # Shared utilities
 ├── context/             # React context providers
-├── public/              # Static assets
-└── tests/               # Test suites
+└── public/              # Static assets
 ```
 
 ---
@@ -161,23 +160,14 @@ npm run lint
 
 # Frontend build test
 npm run build
-
-# Backend tests
-cd backend
-pytest
-
-# API endpoint tests
-python test_api_endpoints.py
 ```
 
 ---
 
 ## 📚 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Setup Guide](SETUP_AND_TESTING_GUIDE.md) | Detailed setup and configuration |
-| [Deployment Guide](DEPLOYMENT_AND_PRODUCTION_READINESS.md) | Production deployment instructions |
+| Document                                        | Description                         |
+|-------------------------------------------------|-------------------------------------|
 | [API Documentation](http://localhost:8000/docs) | Interactive API docs (when running) |
 
 ---
@@ -202,9 +192,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-**P. Sudhakar Babu**
+**P. SUDHAKAR BABU**  
+*Full Stack Developer & AI Enthusiast*
 
-[![GitHub](https://img.shields.io/badge/GitHub-sudhakar--43-181717?logo=github)](https://github.com/sudhakar-43)
+📧 Email: [sudhakarbabu595@gmail.com](mailto:sudhakarbabu595@gmail.com)  
+🐙 GitHub: [@sudhakar-43](https://github.com/sudhakar-43)
+
+[![GitHub](https://img.shields.io/badge/GitHub-sudhakar--43-181717?style=for-the-badge&logo=github)](https://github.com/sudhakar-43)
 
 ---
 
@@ -213,6 +207,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **⭐ Star this repository if you find it helpful!**
 
 Made with ❤️ for the farming community
-opencode --model google/antigravity-claude-opus-4-6-thinking
 
 </div>
