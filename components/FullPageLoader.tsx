@@ -23,8 +23,8 @@ export default function FullPageLoader() {
               initial={{ y: 50, opacity: 0, filter: "blur(10px)" }}
               animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
               transition={{
-                duration: 1.2,
-                delay: 0.5 + (i * 0.1),
+                duration: 0.4, // PERFORMANCE: Faster animation (was 1.2)
+                delay: 0.1 + (i * 0.03), // Reduced delays
                 ease: [0.22, 1, 0.36, 1] // Custom easeOut
               }}
             >
@@ -42,8 +42,8 @@ export default function FullPageLoader() {
               initial={{ y: 50, opacity: 0, filter: "blur(10px)" }}
               animate={{ y: 0, opacity: 1, filter: "blur(2px)" }}
               transition={{
-                duration: 1.2,
-                delay: 0.6 + (i * 0.1),
+                duration: 0.4, // PERFORMANCE: Faster
+                delay: 0.15 + (i * 0.03),
                 ease: [0.22, 1, 0.36, 1]
               }}
               style={{

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { FaArrowLeft, FaMicrophone, FaMicrophoneSlash, FaWaveSquare } from "react-icons/fa";
 import { apiClient } from "@/lib/api";
+import { VoiceResponse } from "@/lib/types";
 
 export default function VoiceAssistantPage() {
   const router = useRouter();
@@ -12,21 +13,21 @@ export default function VoiceAssistantPage() {
   const [response, setResponse] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [conversation, setConversation] = useState<{ type: 'user' | 'ai', text: string }[]>([]);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      
+      const SpeechRecognitionCtor = (window as unknown as { webkitSpeechRecognition: new () => SpeechRecognition }).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognitionCtor();
+
       if (!recognitionRef.current) return;
-      
+
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = "en-US";
 
-      recognitionRef.current.onresult = (event: any) => {
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
         let interimTranscript = "";
         let finalTranscript = "";
 
@@ -50,8 +51,7 @@ export default function VoiceAssistantPage() {
         }
       };
       
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
+      recognitionRef.current.onerror = () => {
         setIsListening(false);
       };
     }
@@ -85,7 +85,7 @@ export default function VoiceAssistantPage() {
 
     try {
       const res = await apiClient.processVoiceQuery(query);
-      
+
       let aiResponse = "I'm sorry, I couldn't process that.";
       if (res.data && res.data.response) {
         aiResponse = res.data.response;

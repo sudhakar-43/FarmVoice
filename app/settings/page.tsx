@@ -21,8 +21,8 @@ export default function SettingsPage() {
       try {
         const profileData = JSON.parse(profile);
         setUserPhone(profileData.phone || "");
-      } catch (e) {
-        console.error("Error parsing profile", e);
+      } catch {
+        // Error parsing profile - silently fail
       }
     }
     setUserName(name);

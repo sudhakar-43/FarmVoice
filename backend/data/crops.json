@@ -1,0 +1,882 @@
+{
+    "Rice": {
+        "category": "cereal",
+        "soil_preference": [
+            "loamy",
+            "clay",
+            "alluvial"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            20,
+            35
+        ],
+        "rainfall_mm": [
+            1000,
+            2000
+        ],
+        "seasons": [
+            "kharif",
+            "monsoon"
+        ],
+        "growth_days": [
+            120,
+            150
+        ],
+        "water_requirement": "high",
+        "ph_range": [
+            5.5,
+            7.0
+        ],
+        "states": [
+            "Andhra Pradesh",
+            "Telangana",
+            "West Bengal",
+            "Punjab",
+            "Tamil Nadu"
+        ]
+    },
+    "Wheat": {
+        "category": "cereal",
+        "soil_preference": [
+            "loamy",
+            "alluvial",
+            "clay loam"
+        ],
+        "climate": [
+            "temperate",
+            "subtropical"
+        ],
+        "temp_range": [
+            10,
+            25
+        ],
+        "rainfall_mm": [
+            250,
+            750
+        ],
+        "seasons": [
+            "rabi",
+            "winter"
+        ],
+        "growth_days": [
+            100,
+            140
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            6.0,
+            7.5
+        ],
+        "states": [
+            "Punjab",
+            "Haryana",
+            "Uttar Pradesh",
+            "Madhya Pradesh",
+            "Rajasthan"
+        ]
+    },
+    "Maize": {
+        "category": "cereal",
+        "soil_preference": [
+            "loamy",
+            "alluvial",
+            "red"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical",
+            "temperate"
+        ],
+        "temp_range": [
+            18,
+            32
+        ],
+        "rainfall_mm": [
+            500,
+            1000
+        ],
+        "seasons": [
+            "kharif",
+            "rabi"
+        ],
+        "growth_days": [
+            90,
+            120
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            5.5,
+            7.5
+        ],
+        "states": [
+            "Karnataka",
+            "Andhra Pradesh",
+            "Maharashtra",
+            "Bihar",
+            "Rajasthan"
+        ]
+    },
+    "Millet": {
+        "category": "cereal",
+        "soil_preference": [
+            "sandy",
+            "red",
+            "loamy"
+        ],
+        "climate": [
+            "arid",
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            25,
+            35
+        ],
+        "rainfall_mm": [
+            250,
+            600
+        ],
+        "seasons": [
+            "kharif",
+            "summer"
+        ],
+        "growth_days": [
+            60,
+            90
+        ],
+        "water_requirement": "low",
+        "ph_range": [
+            5.5,
+            7.5
+        ],
+        "states": [
+            "Rajasthan",
+            "Gujarat",
+            "Maharashtra",
+            "Karnataka",
+            "Andhra Pradesh"
+        ]
+    },
+    "Jowar": {
+        "category": "cereal",
+        "soil_preference": [
+            "black",
+            "red",
+            "loamy"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical",
+            "arid"
+        ],
+        "temp_range": [
+            25,
+            35
+        ],
+        "rainfall_mm": [
+            400,
+            800
+        ],
+        "seasons": [
+            "kharif",
+            "rabi"
+        ],
+        "growth_days": [
+            100,
+            130
+        ],
+        "water_requirement": "low",
+        "ph_range": [
+            5.5,
+            8.0
+        ],
+        "states": [
+            "Maharashtra",
+            "Karnataka",
+            "Madhya Pradesh",
+            "Andhra Pradesh",
+            "Telangana"
+        ]
+    },
+    "Cotton": {
+        "category": "cash_crop",
+        "soil_preference": [
+            "black",
+            "clay",
+            "loamy"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            21,
+            35
+        ],
+        "rainfall_mm": [
+            500,
+            1000
+        ],
+        "seasons": [
+            "kharif"
+        ],
+        "growth_days": [
+            150,
+            180
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            5.5,
+            8.0
+        ],
+        "states": [
+            "Gujarat",
+            "Maharashtra",
+            "Andhra Pradesh",
+            "Telangana",
+            "Punjab"
+        ]
+    },
+    "Sugarcane": {
+        "category": "cash_crop",
+        "soil_preference": [
+            "loamy",
+            "alluvial",
+            "clay"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            20,
+            35
+        ],
+        "rainfall_mm": [
+            1500,
+            2500
+        ],
+        "seasons": [
+            "kharif",
+            "rabi"
+        ],
+        "growth_days": [
+            300,
+            365
+        ],
+        "water_requirement": "very_high",
+        "ph_range": [
+            6.0,
+            8.0
+        ],
+        "states": [
+            "Uttar Pradesh",
+            "Maharashtra",
+            "Karnataka",
+            "Tamil Nadu",
+            "Gujarat"
+        ]
+    },
+    "Groundnut": {
+        "category": "oilseed",
+        "soil_preference": [
+            "sandy",
+            "red",
+            "loamy"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            20,
+            30
+        ],
+        "rainfall_mm": [
+            500,
+            1000
+        ],
+        "seasons": [
+            "kharif",
+            "rabi"
+        ],
+        "growth_days": [
+            100,
+            130
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            5.5,
+            7.0
+        ],
+        "states": [
+            "Gujarat",
+            "Andhra Pradesh",
+            "Tamil Nadu",
+            "Karnataka",
+            "Rajasthan"
+        ]
+    },
+    "Soybean": {
+        "category": "oilseed",
+        "soil_preference": [
+            "loamy",
+            "black",
+            "alluvial"
+        ],
+        "climate": [
+            "subtropical",
+            "tropical"
+        ],
+        "temp_range": [
+            20,
+            30
+        ],
+        "rainfall_mm": [
+            500,
+            900
+        ],
+        "seasons": [
+            "kharif"
+        ],
+        "growth_days": [
+            90,
+            120
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            6.0,
+            7.0
+        ],
+        "states": [
+            "Madhya Pradesh",
+            "Maharashtra",
+            "Rajasthan",
+            "Karnataka",
+            "Telangana"
+        ]
+    },
+    "Mustard": {
+        "category": "oilseed",
+        "soil_preference": [
+            "loamy",
+            "alluvial",
+            "sandy loam"
+        ],
+        "climate": [
+            "temperate",
+            "subtropical"
+        ],
+        "temp_range": [
+            10,
+            25
+        ],
+        "rainfall_mm": [
+            250,
+            500
+        ],
+        "seasons": [
+            "rabi",
+            "winter"
+        ],
+        "growth_days": [
+            110,
+            140
+        ],
+        "water_requirement": "low",
+        "ph_range": [
+            6.0,
+            8.0
+        ],
+        "states": [
+            "Rajasthan",
+            "Uttar Pradesh",
+            "Haryana",
+            "Madhya Pradesh",
+            "Gujarat"
+        ]
+    },
+    "Sunflower": {
+        "category": "oilseed",
+        "soil_preference": [
+            "loamy",
+            "black",
+            "red"
+        ],
+        "climate": [
+            "subtropical",
+            "tropical"
+        ],
+        "temp_range": [
+            20,
+            30
+        ],
+        "rainfall_mm": [
+            500,
+            700
+        ],
+        "seasons": [
+            "kharif",
+            "rabi"
+        ],
+        "growth_days": [
+            80,
+            100
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            6.0,
+            7.5
+        ],
+        "states": [
+            "Karnataka",
+            "Andhra Pradesh",
+            "Maharashtra",
+            "Bihar",
+            "Orissa"
+        ]
+    },
+    "Chickpea": {
+        "category": "pulse",
+        "soil_preference": [
+            "loamy",
+            "black",
+            "alluvial"
+        ],
+        "climate": [
+            "subtropical",
+            "temperate"
+        ],
+        "temp_range": [
+            15,
+            30
+        ],
+        "rainfall_mm": [
+            200,
+            600
+        ],
+        "seasons": [
+            "rabi",
+            "winter"
+        ],
+        "growth_days": [
+            90,
+            120
+        ],
+        "water_requirement": "low",
+        "ph_range": [
+            6.0,
+            8.0
+        ],
+        "states": [
+            "Madhya Pradesh",
+            "Rajasthan",
+            "Maharashtra",
+            "Uttar Pradesh",
+            "Karnataka"
+        ]
+    },
+    "Pigeon Pea": {
+        "category": "pulse",
+        "soil_preference": [
+            "loamy",
+            "red",
+            "black"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            18,
+            35
+        ],
+        "rainfall_mm": [
+            600,
+            1000
+        ],
+        "seasons": [
+            "kharif"
+        ],
+        "growth_days": [
+            120,
+            180
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            5.0,
+            7.5
+        ],
+        "states": [
+            "Maharashtra",
+            "Karnataka",
+            "Andhra Pradesh",
+            "Uttar Pradesh",
+            "Madhya Pradesh"
+        ]
+    },
+    "Black Gram": {
+        "category": "pulse",
+        "soil_preference": [
+            "loamy",
+            "black",
+            "alluvial"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            25,
+            35
+        ],
+        "rainfall_mm": [
+            600,
+            1000
+        ],
+        "seasons": [
+            "kharif",
+            "summer"
+        ],
+        "growth_days": [
+            70,
+            90
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            6.0,
+            7.0
+        ],
+        "states": [
+            "Andhra Pradesh",
+            "Uttar Pradesh",
+            "Maharashtra",
+            "Madhya Pradesh",
+            "Tamil Nadu"
+        ]
+    },
+    "Green Gram": {
+        "category": "pulse",
+        "soil_preference": [
+            "loamy",
+            "sandy loam",
+            "alluvial"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            25,
+            35
+        ],
+        "rainfall_mm": [
+            500,
+            750
+        ],
+        "seasons": [
+            "kharif",
+            "summer"
+        ],
+        "growth_days": [
+            60,
+            75
+        ],
+        "water_requirement": "low",
+        "ph_range": [
+            6.0,
+            7.0
+        ],
+        "states": [
+            "Rajasthan",
+            "Maharashtra",
+            "Andhra Pradesh",
+            "Karnataka",
+            "Orissa"
+        ]
+    },
+    "Tomato": {
+        "category": "vegetable",
+        "soil_preference": [
+            "loamy",
+            "red",
+            "alluvial"
+        ],
+        "climate": [
+            "subtropical",
+            "tropical",
+            "temperate"
+        ],
+        "temp_range": [
+            15,
+            30
+        ],
+        "rainfall_mm": [
+            400,
+            600
+        ],
+        "seasons": [
+            "rabi",
+            "winter",
+            "kharif"
+        ],
+        "growth_days": [
+            90,
+            120
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            6.0,
+            7.0
+        ],
+        "states": [
+            "Andhra Pradesh",
+            "Karnataka",
+            "Maharashtra",
+            "Madhya Pradesh",
+            "Bihar"
+        ]
+    },
+    "Onion": {
+        "category": "vegetable",
+        "soil_preference": [
+            "loamy",
+            "sandy loam",
+            "alluvial"
+        ],
+        "climate": [
+            "subtropical",
+            "temperate"
+        ],
+        "temp_range": [
+            13,
+            27
+        ],
+        "rainfall_mm": [
+            350,
+            550
+        ],
+        "seasons": [
+            "rabi",
+            "kharif"
+        ],
+        "growth_days": [
+            120,
+            150
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            6.0,
+            7.5
+        ],
+        "states": [
+            "Maharashtra",
+            "Karnataka",
+            "Madhya Pradesh",
+            "Bihar",
+            "Andhra Pradesh"
+        ]
+    },
+    "Potato": {
+        "category": "vegetable",
+        "soil_preference": [
+            "loamy",
+            "sandy loam",
+            "alluvial"
+        ],
+        "climate": [
+            "temperate",
+            "subtropical"
+        ],
+        "temp_range": [
+            15,
+            25
+        ],
+        "rainfall_mm": [
+            300,
+            500
+        ],
+        "seasons": [
+            "rabi",
+            "winter"
+        ],
+        "growth_days": [
+            75,
+            120
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            5.0,
+            6.5
+        ],
+        "states": [
+            "Uttar Pradesh",
+            "West Bengal",
+            "Punjab",
+            "Bihar",
+            "Gujarat"
+        ]
+    },
+    "Chili": {
+        "category": "spice",
+        "soil_preference": [
+            "black",
+            "loamy",
+            "red"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            20,
+            35
+        ],
+        "rainfall_mm": [
+            600,
+            1200
+        ],
+        "seasons": [
+            "kharif",
+            "rabi"
+        ],
+        "growth_days": [
+            120,
+            150
+        ],
+        "water_requirement": "medium",
+        "ph_range": [
+            6.0,
+            7.5
+        ],
+        "states": [
+            "Andhra Pradesh",
+            "Telangana",
+            "Karnataka",
+            "Maharashtra",
+            "West Bengal"
+        ]
+    },
+    "Turmeric": {
+        "category": "spice",
+        "soil_preference": [
+            "loamy",
+            "red",
+            "alluvial"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            20,
+            30
+        ],
+        "rainfall_mm": [
+            1500,
+            2250
+        ],
+        "seasons": [
+            "kharif"
+        ],
+        "growth_days": [
+            240,
+            300
+        ],
+        "water_requirement": "high",
+        "ph_range": [
+            5.5,
+            7.5
+        ],
+        "states": [
+            "Andhra Pradesh",
+            "Telangana",
+            "Tamil Nadu",
+            "Karnataka",
+            "Maharashtra"
+        ]
+    },
+    "Ginger": {
+        "category": "spice",
+        "soil_preference": [
+            "loamy",
+            "sandy loam",
+            "red"
+        ],
+        "climate": [
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            20,
+            30
+        ],
+        "rainfall_mm": [
+            1500,
+            3000
+        ],
+        "seasons": [
+            "kharif"
+        ],
+        "growth_days": [
+            210,
+            270
+        ],
+        "water_requirement": "high",
+        "ph_range": [
+            5.5,
+            6.5
+        ],
+        "states": [
+            "Kerala",
+            "Karnataka",
+            "Assam",
+            "Meghalaya",
+            "Arunachal Pradesh"
+        ]
+    },
+    "Castor": {
+        "category": "oilseed",
+        "soil_preference": [
+            "sandy",
+            "loamy",
+            "red"
+        ],
+        "climate": [
+            "arid",
+            "tropical",
+            "subtropical"
+        ],
+        "temp_range": [
+            20,
+            35
+        ],
+        "rainfall_mm": [
+            300,
+            600
+        ],
+        "seasons": [
+            "kharif"
+        ],
+        "growth_days": [
+            140,
+            180
+        ],
+        "water_requirement": "low",
+        "ph_range": [
+            5.0,
+            8.0
+        ],
+        "states": [
+            "Gujarat",
+            "Andhra Pradesh",
+            "Rajasthan",
+            "Karnataka",
+            "Tamil Nadu"
+        ]
+    }
+}

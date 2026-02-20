@@ -20,7 +20,7 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
   const [language, setLanguage] = useState<Language>("en");
   const [notifications, setNotifications] = useState(true);
   const [mounted, setMounted] = useState(false);

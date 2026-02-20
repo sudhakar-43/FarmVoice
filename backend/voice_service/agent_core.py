@@ -206,6 +206,20 @@ class FarmVoiceAgent:
                         "speech": "Hello! How can I help you today?",
                         "actions": [],
                     }
+                elif fast_intent == "help":
+                    # FAST: Skip LLM for help
+                    agent_decision = {
+                        "intent": "help",
+                        "speech": "I can help with weather updates, crop recommendations, disease diagnosis, and market prices. Just ask!",
+                        "actions": [],
+                    }
+                elif fast_intent == "weather_check":
+                    # FAST: Quick weather action trigger
+                    agent_decision = {
+                        "intent": "weather_check",
+                        "speech": "Let me check the weather for you.",
+                        "actions": [{"type": "read", "entity": "weather", "params": {}}],
+                    }
                 elif fast_intent == "repair":
                     # REPAIR: Get last assistant message
                     last_speech = "I didn't say anything yet."

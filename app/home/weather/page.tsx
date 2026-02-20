@@ -64,15 +64,15 @@ export default function WeatherPage() {
               setLastUpdated(data.last_updated || new Date(timestamp).toISOString());
               setLoading(false);
               clearTimeout(timeoutId);
-              
+
               // Background revalidation for fresh data
               if (now - timestamp > 300000) { // Revalidate if > 5 min old
                 fetchWeatherInBackground();
               }
               return;
             }
-          } catch (e) {
-            console.error("Cache parse error", e);
+          } catch {
+            // Cache parse error - continue to fetch fresh data
           }
         }
       }
@@ -126,7 +126,6 @@ export default function WeatherPage() {
       if (err.name === 'AbortError') {
         return; // Request was cancelled, ignore
       }
-      console.error("Weather fetch failed", err);
       setError("Weather data unavailable");
     } finally {
       setLoading(false);
@@ -152,7 +151,7 @@ export default function WeatherPage() {
           timestamp: Date.now()
         }));
       }
-    } catch (err) {
+    } catch {
       // Silent fail for background refresh
     }
   };

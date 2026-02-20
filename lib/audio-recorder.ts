@@ -75,8 +75,8 @@ export class AudioRecorder {
         }
       };
 
-      this.mediaRecorder.onerror = (event: any) => {
-        console.error('MediaRecorder error:', event.error);
+      this.mediaRecorder.onerror = () => {
+        // MediaRecorder error - silently handle
       };
 
     } catch (error) {
@@ -115,7 +115,6 @@ export class AudioRecorder {
     }
 
     if (this.mediaRecorder.state === 'recording') {
-      console.warn('Recording already in progress');
       return;
     }
 
@@ -221,11 +220,10 @@ export class AudioRecorder {
 
       // Calculate average volume
       const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-      
+
       audioContext.close();
       return average / 255; // Normalize to 0-1
-    } catch (error) {
-      console.error('Failed to get audio level:', error);
+    } catch {
       return 0;
     }
   }

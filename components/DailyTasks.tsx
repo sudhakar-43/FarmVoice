@@ -5,17 +5,7 @@ import { FaCheckCircle, FaCircle, FaCalendarAlt, FaClock, FaExclamationCircle, F
 import { motion, AnimatePresence } from "framer-motion";
 import { apiClient } from "@/lib/api";
 import { useSettings } from "@/context/SettingsContext";
-
-interface Task {
-  id: string; // Changed from number to string to support UUIDs
-  task: string;
-  date: string; // YYYY-MM-DD
-  time?: string; // HH:MM
-  status: "pending" | "completed" | "overdue";
-  priority: "high" | "medium" | "low";
-  source?: "manual" | "smart-weather" | "smart-disease";
-  meta?: any;
-}
+import { Task } from "@/lib/types";
 
 interface DailyTasksProps {
   limit?: number;
@@ -47,11 +37,9 @@ export default function DailyTasks({ limit, compact = false }: DailyTasksProps) 
 
       const tasksData = response.data || [];
       setTasks(tasksData);
-    } catch (error: any) {
-      console.error("Error fetching tasks:", error);
-      if (error.message?.includes("Session expired") || error.message?.includes("Not authenticated")) {
+    } catch (error) {
+      if (error instanceof Error && (error.message?.includes("Session expired") || error.message?.includes("Not authenticated"))) {
           // Graceful redirect
-          console.warn("Session expired (Not authenticated) in DailyTasks. Redirecting...");
           window.location.href = "/login";
       }
       setTasks([]);
@@ -88,8 +76,7 @@ export default function DailyTasks({ limit, compact = false }: DailyTasksProps) 
       // Note: If reverting to pending, we might need an endpoint or logic, 
       // but typically we only mark complete. For now we just support complete.
       
-    } catch (error) {
-      console.error('Error toggling task:', error);
+    } catch {
       // Revert on error
       fetchTasks();
     }
@@ -175,7 +162,7 @@ export default function DailyTasks({ limit, compact = false }: DailyTasksProps) 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <h4 className={`font-semibold text-gray-900 dark:text-gray-100 leading-tight transition-all duration-300 ${task.status === "completed" ? "line-through text-gray-400 dark:text-gray-500 decoration-2 decoration-emerald-500/30" : ""}`}>
-                        {t(task.task as any)}
+                        {t(task.task as Parameters<typeof t>[0])}
                       </h4>
                       {task.source && task.source !== "manual" && (
                         <div className="ml-2 flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" title="Smart Task">

@@ -10,9 +10,10 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiClient } from "@/lib/api";
+import { Notification as NotificationType } from "@/lib/types";
 
 interface Notification {
-  id: number;
+  id: number | string;
   title: string;
   message: string;
   type: string;
@@ -37,12 +38,11 @@ export default function Notifications({ limit }: NotificationsProps) {
           throw new Error(response.error);
         }
 
-        const notificationsData = response.data || [];
+        const notificationsData = (response.data || []) as Notification[];
         setNotifications(
           limit ? notificationsData.slice(0, limit) : notificationsData
         );
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
+      } catch {
         setNotifications([]);
       } finally {
         setLoading(false);
@@ -78,7 +78,7 @@ export default function Notifications({ limit }: NotificationsProps) {
     }
   };
 
-  const markAsRead = (id: number) => {
+  const markAsRead = (id: number | string) => {
     setNotifications(
       notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
     );

@@ -47,8 +47,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           setIsAuthenticated(false);
           router.replace("/login");
         }
-      } catch (error) {
-        console.error("Auth check error:", error);
+      } catch {
         setIsAuthenticated(false);
         router.replace("/login");
       } finally {

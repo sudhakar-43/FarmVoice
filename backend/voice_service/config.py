@@ -34,9 +34,9 @@ class VoiceConfig:
         self.local_stt_model: str = os.getenv("LOCAL_STT_MODEL", "large-v3")
         self.local_tts_voice: str = os.getenv("LOCAL_TTS_VOICE", "en_US-lessac-medium")
         
-        # Ollama settings
+        # Ollama settings - reduced timeout for faster fallback
         self.ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-        self.ollama_timeout: int = int(os.getenv("OLLAMA_TIMEOUT_MS", "45000"))
+        self.ollama_timeout: int = int(os.getenv("OLLAMA_TIMEOUT_MS", "15000"))  # Reduced from 45s to 15s
         
         # Gemini settings
         self.llm_provider: str = os.getenv("LLM_PROVIDER", "gemini")
@@ -50,8 +50,8 @@ class VoiceConfig:
         self.stt_partial_timeout_ms: int = int(os.getenv("STT_PARTIAL_TIMEOUT_MS", "1000"))
         self.tts_start_timeout_ms: int = int(os.getenv("TTS_START_TIMEOUT_MS", "2000"))
         
-        # Cache TTLs (seconds) - optimized for voice
-        self.cache_ttl_weather_s: int = int(os.getenv("VOICE_CACHE_TTL_WEATHER_S", "300"))  # 5 min
+        # Cache TTLs (seconds) - optimized for voice and performance
+        self.cache_ttl_weather_s: int = int(os.getenv("VOICE_CACHE_TTL_WEATHER_S", "600"))  # 10 min (increased from 5)
         self.cache_ttl_market_s: int = int(os.getenv("VOICE_CACHE_TTL_MARKET_S", "900"))    # 15 min
         self.cache_ttl_soil_s: int = int(os.getenv("VOICE_CACHE_TTL_SOIL_S", "86400"))
         

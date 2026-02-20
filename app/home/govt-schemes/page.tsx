@@ -37,8 +37,8 @@ export default function GovtSchemesPage() {
       if (response.data) {
         setSchemes(response.data.schemes);
       }
-    } catch (error) {
-      console.error("Error fetching schemes:", error);
+    } catch {
+      // Error fetching schemes - silently fail
     } finally {
       setLoading(false);
     }

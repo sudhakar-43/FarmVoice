@@ -5,6 +5,7 @@ import { FaBug, FaSearch, FaLeaf, FaExclamationTriangle, FaCloudRain, FaTemperat
 import { apiClient } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSettings } from "@/context/SettingsContext";
+import { CropSelection } from "@/lib/types";
 import DiseaseHoverCard from "@/components/DiseaseHoverCard";
 
 interface Disease {
@@ -22,12 +23,6 @@ interface RiskForecast {
   color: string;
 }
 
-interface SelectedCrop {
-  id: string;
-  crop_name: string;
-  status: string;
-}
-
 export default function DiseaseManagement() {
   const { t } = useSettings();
   const [cropSearch, setCropSearch] = useState("");
@@ -36,7 +31,7 @@ export default function DiseaseManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [riskForecast, setRiskForecast] = useState<RiskForecast[]>([]);
-  const [userCrops, setUserCrops] = useState<SelectedCrop[]>([]);
+  const [userCrops, setUserCrops] = useState<CropSelection[]>([]);
   const [loadingUserCrops, setLoadingUserCrops] = useState(true);
   const [selectedDisease, setSelectedDisease] = useState<Disease | null>(null);
 
@@ -52,15 +47,15 @@ export default function DiseaseManagement() {
         if (response.data && Array.isArray(response.data) && response.data.length > 0) {
           setUserCrops(response.data);
           // Auto-select the first active crop
-          const activeCrop = response.data.find((c: any) => c.status === 'active') || response.data[0];
+          const activeCrop = response.data.find((c) => c.status === 'active') || response.data[0];
           if (activeCrop) {
             setCropSearch(activeCrop.crop_name);
             // Auto-fetch diseases for the user's crop
             await fetchDiseasesForCrop(activeCrop.crop_name);
           }
         }
-      } catch (error) {
-        console.error("Error fetching user crops:", error);
+      } catch {
+        // Error fetching user crops - continue without them
       } finally {
         setLoadingUserCrops(false);
       }
@@ -92,8 +87,7 @@ export default function DiseaseManagement() {
         }
         setRiskForecast(formattedRisks);
       }
-    } catch (error) {
-      console.error("Error fetching risk forecast:", error);
+    } catch {
       setRiskForecast([]);
     }
   };
@@ -115,8 +109,7 @@ export default function DiseaseManagement() {
       } else {
         setError(t('no_diseases_found'));
       }
-    } catch (err) {
-      console.error("Prediction error:", err);
+    } catch {
       setError(t('prediction_error'));
     } finally {
       setIsLoading(false);

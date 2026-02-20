@@ -108,7 +108,6 @@ export default function VoiceAssistantPage() {
     
     utterance.onerror = (e: any) => {
        if (e.error === 'canceled' || e.error === 'interrupted') return;
-       console.error("TTS Error:", e.error);
        setVoiceState('IDLE');
     };
     
@@ -172,13 +171,8 @@ export default function VoiceAssistantPage() {
          }
       };
 
-      recognition.onerror = (e: any) => {
-          console.log("Recognition error:", e.error);
-          if (e.error !== 'no-speech') {
-             setVoiceState('IDLE');
-          } else {
-             setVoiceState('IDLE'); 
-          }
+      recognition.onerror = () => {
+          setVoiceState('IDLE');
       };
 
       recognition.onend = () => {

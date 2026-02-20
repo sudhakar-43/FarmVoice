@@ -68,8 +68,7 @@ export default function DashboardStats() {
             link: "/home/voice-queries"
           }
         ]);
-      } catch (error) {
-        console.error("Error fetching dashboard stats:", error);
+      } catch {
         // Set empty stats on error
         setStats([]);
       } finally {

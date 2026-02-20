@@ -35,8 +35,8 @@ export default function FarmingTipsPage() {
         setTipOfDay(response.data.tip_of_day);
         setAllTips(response.data.all_tips);
       }
-    } catch (error) {
-      console.error("Error fetching tips:", error);
+    } catch {
+      // Error fetching tips - silently fail
     } finally {
       setLoading(false);
     }

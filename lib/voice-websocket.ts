@@ -48,7 +48,6 @@ export class VoiceWebSocket {
         this.ws = new WebSocket(this.url);
 
         this.ws.onopen = () => {
-          console.log("WebSocket connected");
           this.reconnectAttempts = 0;
           this.connectionHandlers.forEach((handler) => handler(true));
           resolve();
@@ -58,19 +57,17 @@ export class VoiceWebSocket {
           try {
             const message: VoiceMessage = JSON.parse(event.data);
             this.messageHandlers.forEach((handler) => handler(message));
-          } catch (error) {
-            console.error("Failed to parse message:", error);
+          } catch {
+            // Failed to parse message - silently ignore
           }
         };
 
         this.ws.onerror = (event) => {
           const error = new Error("WebSocket error");
-          console.error("WebSocket error:", event);
           this.errorHandlers.forEach((handler) => handler(error));
         };
 
         this.ws.onclose = (event) => {
-          console.log("WebSocket closed:", event.code, event.reason);
           this.connectionHandlers.forEach((handler) => handler(false));
 
           if (
@@ -100,13 +97,9 @@ export class VoiceWebSocket {
     this.reconnectAttempts++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
-    console.log(
-      `Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
-    );
-
     setTimeout(() => {
-      this.connect().catch((error) => {
-        console.error("Reconnection failed:", error);
+      this.connect().catch(() => {
+        // Reconnection failed - will retry on next attempt
       });
     }, delay);
   }
@@ -116,15 +109,13 @@ export class VoiceWebSocket {
    */
   send(message: VoiceMessage): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket is not connected");
       return false;
     }
 
     try {
       this.ws.send(JSON.stringify(message));
       return true;
-    } catch (error) {
-      console.error("Failed to send message:", error);
+    } catch {
       return false;
     }
   }
@@ -134,15 +125,13 @@ export class VoiceWebSocket {
    */
   sendAudio(audioData: ArrayBuffer | Blob): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket is not connected");
       return false;
     }
 
     try {
       this.ws.send(audioData);
       return true;
-    } catch (error) {
-      console.error("Failed to send audio:", error);
+    } catch {
       return false;
     }
   }

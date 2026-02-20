@@ -37,8 +37,8 @@ export default function NearbyMandisPage() {
       if (response.data) {
         setMandis(response.data.mandis);
       }
-    } catch (error) {
-      console.error("Error fetching mandis:", error);
+    } catch {
+      // Error fetching mandis - silently fail
     } finally {
       setLoading(false);
     }

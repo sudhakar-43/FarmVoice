@@ -95,8 +95,7 @@ export default function CropHealthChart({ onDataLoaded }: CropHealthChartProps) 
             });
           }
         }
-      } catch (error) {
-        console.error("Error fetching CHI data:", error);
+      } catch {
         // Fallback data - assume new user for safety
         setDtsData({
           date: new Date().toISOString().split('T')[0],

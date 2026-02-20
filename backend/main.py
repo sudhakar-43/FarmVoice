@@ -56,6 +56,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# PERFORMANCE: Add gzip compression for 60-80% smaller responses
+from starlette.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=500)  # Compress responses > 500 bytes
+
 # Supabase Configuration
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_KEY")

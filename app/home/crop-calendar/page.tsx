@@ -37,8 +37,8 @@ export default function CropCalendarPage() {
         setEvents(response.data.events);
         setUpcomingWeek(response.data.upcoming_week);
       }
-    } catch (error) {
-      console.error("Error fetching calendar:", error);
+    } catch {
+      // Error fetching calendar - silently fail
     } finally {
       setLoading(false);
     }

@@ -4,9 +4,10 @@ import { useState } from "react";
 import { FaSearch, FaMapMarkerAlt, FaLeaf, FaCloudSun, FaTemperatureHigh, FaTint, FaWind, FaCloudRain } from "react-icons/fa";
 import CropDetailsModal from "./CropDetailsModal";
 import { useSettings } from "@/context/SettingsContext";
+import { CropRecommendation, CropSuitabilityCheck, CropSelectRequest, LocationData, SoilData, WeatherData } from "@/lib/types";
 
 interface CropSelectionProps {
-  onCropSelected: (crop: any) => void;
+  onCropSelected: (crop: CropSelectRequest) => void;
 }
 
 // Crop images mapping
@@ -51,9 +52,15 @@ export default function CropSelection({ onCropSelected }: CropSelectionProps) {
   const [searchInput, setSearchInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [locationData, setLocationData] = useState<any>(null);
-  const [selectedCrop, setSelectedCrop] = useState<any>(null);
+  const [recommendations, setRecommendations] = useState<CropRecommendation[]>([]);
+  const [locationData, setLocationData] = useState<{
+    location?: LocationData;
+    weather?: WeatherData;
+    soil?: SoilData;
+    climate?: string;
+    pincode?: string;
+  } | null>(null);
+  const [selectedCrop, setSelectedCrop] = useState<CropSuitabilityCheck | null>(null);
   const [showCropDetails, setShowCropDetails] = useState(false);
   const [searchType, setSearchType] = useState<"pincode" | "crop" | null>(null);
 
@@ -166,7 +173,7 @@ export default function CropSelection({ onCropSelected }: CropSelectionProps) {
         return;
       }
 
-      const requestBody: any = { crop_name: name };
+      const requestBody: { crop_name: string; pincode?: string } = { crop_name: name };
       const storedPincode = typeof window !== "undefined" ? localStorage.getItem("farmvoice_pincode") : null;
       const pincodeToUse = locationData?.pincode || storedPincode;
       
@@ -201,12 +208,18 @@ export default function CropSelection({ onCropSelected }: CropSelectionProps) {
     }
   };
 
-  const handleCropSelect = (crop: any) => {
-    setSelectedCrop(crop);
+  const handleCropSelect = (crop: CropSuitabilityCheck | CropRecommendation) => {
+    setSelectedCrop(crop as CropSuitabilityCheck);
     setShowCropDetails(true);
   };
-  
- const handleConfirmCrop = async (crop: any) => {
+
+  const handleCropDetailsConfirm = (crop: CropSelectRequest) => {
+    onCropSelected(crop);
+    setShowCropDetails(false);
+    setSelectedCrop(null);
+  };
+
+ const handleConfirmCrop = async (crop: CropSuitabilityCheck | CropRecommendation) => {
     try {
        const token = typeof window !== "undefined" ? localStorage.getItem("farmvoice_token") : null;
        
@@ -220,8 +233,9 @@ export default function CropSelection({ onCropSelected }: CropSelectionProps) {
         return;
       }
 
-        const payload = {
-            ...crop,
+        const payload: CropSelectRequest = {
+            crop_name: (crop as CropSuitabilityCheck).crop_name || (crop as CropRecommendation).name || "Unknown Crop",
+            suitability_score: (crop as CropSuitabilityCheck).suitability_score || (crop as CropRecommendation).suitability,
             location: locationData ? {
             pincode: locationData.pincode,
             city: locationData.location?.city,
@@ -234,11 +248,11 @@ export default function CropSelection({ onCropSelected }: CropSelectionProps) {
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify(payload),
         });
-        
+
         const data = await response.json();
 
         if (response.ok) {
-            onCropSelected(crop);
+            onCropSelected(payload);
         } else {
             setError(data.detail || "Failed to select crop");
         }
@@ -256,11 +270,11 @@ export default function CropSelection({ onCropSelected }: CropSelectionProps) {
             setShowCropDetails(false);
             setSelectedCrop(null);
         }}
-        onConfirm={handleConfirmCrop}
+        onConfirm={handleCropDetailsConfirm}
         onRecommendCrop={() => {
           setShowCropDetails(false);
           setSelectedCrop(null);
-          setSearchInput(""); 
+          setSearchInput("");
           setRecommendations([]);
           setSearchType(null);
         }}

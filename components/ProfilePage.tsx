@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { FaUser, FaMapMarkerAlt, FaPhone, FaSeedling, FaEdit, FaSave, FaTimes } from "react-icons/fa";
 import { apiClient } from "@/lib/api";
+import { FarmerProfile, CropSelection } from "@/lib/types";
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<any>(null);
-  const [selectedCrops, setSelectedCrops] = useState<any[]>([]);
+  const [profile, setProfile] = useState<FarmerProfile | null>(null);
+  const [selectedCrops, setSelectedCrops] = useState<CropSelection[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -37,8 +38,8 @@ export default function ProfilePage() {
       if (cropsResponse.data) {
         setSelectedCrops(cropsResponse.data);
       }
-    } catch (err) {
-      console.error("Error loading profile:", err);
+    } catch {
+      // Error loading profile - silently fail
     } finally {
       setIsLoading(false);
     }
@@ -55,8 +56,8 @@ export default function ProfilePage() {
         setProfile(response.data);
         setIsEditing(false);
       }
-    } catch (err) {
-      console.error("Error updating profile:", err);
+    } catch {
+      // Error updating profile - silently fail
     }
   };
 
@@ -215,9 +216,9 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold text-gray-900">{crop.crop_name}</h4>
                   <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    crop.is_suitable ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-yellow-700"
+                    (crop.suitability_score || 0) >= 70 ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-yellow-700"
                   }`}>
-                    {crop.suitability_score}% Match
+                    {crop.suitability_score || 0}% Match
                   </span>
                 </div>
                 {crop.acres_allocated && (

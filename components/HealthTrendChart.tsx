@@ -87,8 +87,8 @@ export default function HealthTrendChart() {
         
         setData(mockData);
 
-      } catch (err) {
-        console.error("Chart error", err);
+      } catch {
+        // Chart error - silently fail
       } finally {
         setLoading(false);
       }

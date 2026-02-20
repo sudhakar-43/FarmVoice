@@ -3,20 +3,77 @@
 import { useState, useEffect } from "react";
 import { FaTimes, FaCheckCircle, FaExclamationTriangle, FaCalendarAlt, FaBug, FaLeaf, FaMapMarkerAlt, FaTemperatureHigh, FaTint, FaCloudRain, FaCloudSun, FaArrowUp } from "react-icons/fa";
 import { apiClient } from "@/lib/api";
+import { CropRecommendation, LocationData, SoilData, WeatherData, CropSelectRequest } from "@/lib/types";
+
+interface CropDetailsData {
+  name?: string;
+  original_name?: string;
+  crop_name?: string;
+  title?: string;
+  suitability_score?: number;
+  suitability?: number;
+  is_suitable?: boolean;
+  category?: string;
+  description?: string;
+  benefits?: string[];
+  reasons?: string[];
+  pincode?: string;
+  location_data?: {
+    location?: LocationData;
+    weather?: WeatherData;
+    soil?: SoilData;
+    climate?: string;
+    pincode?: string;
+    display_name?: string;
+    city?: string;
+    district?: string;
+    state?: string;
+    soil_type?: string;
+  };
+  farming_guide?: {
+    season?: string;
+    planting?: string[];
+    watering?: string;
+    fertilizer?: string;
+    harvesting?: string;
+  };
+  disease_predictions?: Array<{
+    name: string;
+    severity: string;
+    description: string;
+    prevention?: string[];
+  }>;
+  location?: {
+    pincode?: string;
+    city?: string;
+    district?: string;
+    state?: string;
+  };
+}
 
 interface CropDetailsModalProps {
-  crop: any;
+  crop: CropDetailsData;
   onClose: () => void;
-  onConfirm: (crop: any) => void;
+  onConfirm: (crop: CropSelectRequest) => void;
   onRecommendCrop?: () => void;
 }
 
 export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommendCrop }: CropDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "farming" | "disease">("overview");
-  const [locationData, setLocationData] = useState<any>(null);
+  const [locationData, setLocationData] = useState<{
+    location?: LocationData;
+    weather?: WeatherData;
+    soil?: SoilData;
+    climate?: string;
+    pincode?: string;
+    display_name?: string;
+    city?: string;
+    district?: string;
+    state?: string;
+  } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<CropRecommendation[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
   useEffect(() => {
@@ -64,8 +121,8 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
           setLocationData(data);
         }
       }
-    } catch (error) {
-      console.error("Error fetching location data:", error);
+    } catch {
+      // Error fetching location data - silently fail
     } finally {
       setIsLoadingLocation(false);
     }
@@ -106,16 +163,25 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
         }
         setShowRecommendations(false);
       }
-    } catch (error) {
-      console.error("Error fetching recommendations:", error);
+    } catch {
       setRecommendations([]);
     } finally {
       setIsLoadingRecommendations(false);
     }
   };
 
-  const handleCropSelect = (selectedCrop: any) => {
-    onConfirm(selectedCrop);
+  const handleCropSelect = (selectedCrop: CropDetailsData) => {
+    const cropRequest: CropSelectRequest = {
+      crop_name: selectedCrop.crop_name || selectedCrop.original_name || selectedCrop.name || "Unknown Crop",
+      suitability_score: selectedCrop.suitability_score || selectedCrop.suitability,
+      location: locationData ? {
+        pincode: locationData.pincode,
+        city: locationData.city,
+        district: locationData.district,
+        state: locationData.state,
+      } : undefined,
+    };
+    onConfirm(cropRequest);
   };
 
   return (
@@ -266,9 +332,9 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
                       <p className="text-2xl font-bold text-gray-900">
                         {locationData.weather.current.temperature}°C
                       </p>
-                      {locationData.weather.forecast && (
+                      {locationData.weather.forecast && locationData.weather.forecast.length > 0 && (
                         <p className="text-xs text-gray-500 mt-1">
-                          Range: {locationData.weather.forecast.min_temp}° - {locationData.weather.forecast.max_temp}°C
+                          Range: {locationData.weather.forecast[0].min_temp || locationData.weather.forecast[0].temp_min}° - {locationData.weather.forecast[0].max_temp || locationData.weather.forecast[0].temp_max}°C
                         </p>
                       )}
                     </div>
@@ -280,9 +346,9 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
                       <p className="text-2xl font-bold text-gray-900">
                         {locationData.weather.current.humidity}%
                       </p>
-                      {locationData.weather.forecast?.avg_humidity_24h && (
+                      {locationData.weather.forecast && locationData.weather.forecast.length > 0 && locationData.weather.forecast[0].avg_humidity_24h && (
                         <p className="text-xs text-gray-500 mt-1">
-                          24h avg: {locationData.weather.forecast.avg_humidity_24h}%
+                          24h avg: {locationData.weather.forecast[0].avg_humidity_24h}%
                         </p>
                       )}
                     </div>
@@ -294,9 +360,9 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
                       <p className="text-2xl font-bold text-gray-900">
                         {locationData.weather.current.precipitation}mm
                       </p>
-                      {locationData.weather.forecast?.next_24h_precip_probability && (
+                      {locationData.weather.forecast && locationData.weather.forecast.length > 0 && locationData.weather.forecast[0].next_24h_precip_probability && (
                         <p className="text-xs text-gray-500 mt-1">
-                          Rain chance: {locationData.weather.forecast.next_24h_precip_probability}%
+                          Rain chance: {locationData.weather.forecast[0].next_24h_precip_probability}%
                         </p>
                       )}
                     </div>
@@ -484,7 +550,7 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
             <div className="space-y-6">
               {crop.disease_predictions && crop.disease_predictions.length > 0 ? (
                 <div className="space-y-4">
-                  {crop.disease_predictions.map((disease: any, i: number) => (
+                  {crop.disease_predictions.map((disease, i) => (
                     <div key={i} className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
                       <div className="flex items-start justify-between mb-3">
                         <h4 className="font-bold text-gray-900 text-lg">{disease.name}</h4>
@@ -607,7 +673,7 @@ export default function CropDetailsModal({ crop, onClose, onConfirm, onRecommend
             <button onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button onClick={() => onConfirm(crop)} className="btn-primary flex items-center space-x-2">
+            <button onClick={() => handleCropSelect(crop)} className="btn-primary flex items-center space-x-2">
               <FaCheckCircle />
               <span>Select This Crop</span>
             </button>

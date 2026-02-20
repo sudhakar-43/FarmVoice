@@ -1,3 +1,28 @@
+import {
+  ApiError,
+  ValidationErrorDetail,
+  FarmerProfile,
+  ProfileUpdateRequest,
+  CropRecommendation,
+  CropSelection,
+  CropSuitabilityCheck,
+  CropSelectRequest,
+  CropRecommendationByPincodeResponse,
+  VoiceRequest,
+  VoiceResponse,
+  VoicePollResponse,
+  DiseaseDiagnosis,
+  DiseasePredictResponse,
+  MarketPrice,
+  WeatherResponse,
+  Task,
+  Notification,
+  LocationData,
+  SoilData,
+  WeatherData,
+  DataSourceInfo,
+} from "./types";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export interface ApiResponse<T> {
@@ -54,14 +79,6 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${this.token}`;
     }
 
-    // DEBUG: Log what we're sending
-    console.log("API Request Debug:", {
-      url,
-      hasToken: !!this.token,
-      tokenLength: this.token ? this.token.length : 0,
-      authHeader: headers["Authorization"] ? "Present" : "Missing"
-    });
-
     try {
       const response = await fetch(url, {
         ...options,
@@ -70,16 +87,15 @@ class ApiClient {
 
       if (response.status === 401 || response.status === 403) {
         this.clearToken();
-        
+
         // Dispatch global auth error event for the AuthContext to handle
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent('farmvoice:auth-error'));
         }
 
-        const errorMsg = response.status === 403 
-          ? "Access forbidden. Please log in again." 
+        const errorMsg = response.status === 403
+          ? "Access forbidden. Please log in again."
           : "Session expired. Please log in again.";
-        console.error(`Auth Error ${response.status}:`, errorMsg);
         return { error: errorMsg };
       }
 
@@ -91,8 +107,8 @@ class ApiClient {
         if (data.detail) {
           if (Array.isArray(data.detail)) {
             // Format validation errors
-            errorMessage = data.detail
-              .map((err: any) => {
+            errorMessage = (data.detail as ValidationErrorDetail[])
+              .map((err) => {
                 const field = err.loc?.join(".") || "field";
                 return `${field}: ${err.msg || "Invalid value"}`;
               })
@@ -116,7 +132,7 @@ class ApiClient {
 
   public async post<T>(
     endpoint: string,
-    body: any,
+    body: unknown,
     options: RequestInit = {},
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
@@ -202,13 +218,7 @@ class ApiClient {
 
   // Disease diagnosis
   async diagnoseDisease(crop: string, symptoms: string, imageUrl?: string) {
-    return this.request<{
-      name: string;
-      severity: string;
-      description: string;
-      treatment: string[];
-      prevention: string[];
-    }>("/api/disease/diagnose", {
+    return this.request<DiseaseDiagnosis>("/api/disease/diagnose", {
       method: "POST",
       body: JSON.stringify({ crop, symptoms, image_url: imageUrl }),
     });
@@ -216,14 +226,7 @@ class ApiClient {
 
   // Predict diseases (Scraping)
   async predictDisease(cropName: string) {
-    return this.request<{
-      diseases: Array<{
-        name: string;
-        symptoms: string;
-        control: string;
-        image_url?: string;
-      }>;
-    }>("/api/disease/predict", {
+    return this.request<DiseasePredictResponse>("/api/disease/predict", {
       method: "POST",
       body: JSON.stringify({ crop_name: cropName }),
     });
@@ -231,30 +234,17 @@ class ApiClient {
 
   // Market prices
   async getMarketPrices() {
-    return this.request<
-      Array<{
-        crop: string;
-        price: number;
-        unit: string;
-        change: number;
-        trend: "up" | "down" | "stable";
-        market: string;
-        updated_at: string;
-      }>
-    >("/api/market/prices");
+    return this.request<MarketPrice[]>("/api/market/prices");
   }
 
   // Voice assistant - Synchronous / Blocking
-  async processVoiceQuery(query: string, language: string = "en", lat?: number, lon?: number) {
-    return this.request<{
-      speech: string;
-      mode: string;
-      request_id: string;
-      canvas_spec?: any;
-      ui?: any;
-      timings?: any;
-      tool_results?: any;
-    }>("/api/voice/chat", {
+  async processVoiceQuery(
+    query: string,
+    language: string = "en",
+    lat?: number,
+    lon?: number,
+  ) {
+    return this.request<VoiceResponse>("/api/voice/chat", {
       method: "POST",
       body: JSON.stringify({
         text: query,
@@ -264,17 +254,22 @@ class ApiClient {
         context: {
           language: language,
         },
-      }),
+      } satisfies VoiceRequest),
     });
+  }
+
+  // Poll for voice response (async mode)
+  async getVoiceChatResult(requestId: string) {
+    return this.request<VoicePollResponse>(`/api/voice/chat/result/${requestId}`);
   }
 
   // Farmer profile
   async getFarmerProfile() {
-    return this.request<any>("/api/farmer/profile");
+    return this.request<FarmerProfile>("/api/farmer/profile");
   }
 
-  async updateFarmerProfile(profile: any) {
-    return this.request<any>("/api/farmer/profile", {
+  async updateFarmerProfile(profile: ProfileUpdateRequest) {
+    return this.request<FarmerProfile>("/api/farmer/profile", {
       method: "POST",
       body: JSON.stringify(profile),
     });
@@ -282,54 +277,52 @@ class ApiClient {
 
   // Crop recommendations by pincode
   async getCropRecommendationsByPincode(pincode: string) {
-    return this.request<{
-      pincode: string;
-      location: any;
-      soil: any;
-      climate: string;
-      weather: any;
-      suitable_crops: string[];
-      recommendations: any[];
-      data_sources: any;
-    }>("/api/crop/recommend-by-pincode", {
-      method: "POST",
-      body: JSON.stringify({ pincode }),
-    });
+    return this.request<CropRecommendationByPincodeResponse>(
+      "/api/crop/recommend-by-pincode",
+      {
+        method: "POST",
+        body: JSON.stringify({ pincode }),
+      },
+    );
   }
 
   // Check crop suitability
-  async checkCropSuitability(cropName: string) {
-    return this.request<any>("/api/crop/check-suitability", {
+  async checkCropSuitability(cropName: string, pincode?: string) {
+    return this.request<CropSuitabilityCheck>("/api/crop/check-suitability", {
       method: "POST",
-      body: JSON.stringify({ crop_name: cropName }),
+      body: JSON.stringify({ crop_name: cropName, pincode }),
     });
   }
 
   // Select crop
-  async selectCrop(cropData: any) {
-    return this.request<any>("/api/crop/select", {
+  async selectCrop(cropData: CropSelectRequest) {
+    return this.request<CropSelection>("/api/crop/select", {
       method: "POST",
       body: JSON.stringify(cropData),
     });
   }
 
   // Get daily tasks
-  async getDailyTasks() {
-    return this.request<any[]>("/api/tasks");
+  async getDailyTasks(tab?: string) {
+    const endpoint = tab ? `/api/tasks?tab=${tab}` : "/api/tasks";
+    return this.request<Task[]>(endpoint);
   }
 
   // Get notifications
   async getNotifications() {
-    return this.request<any[]>("/api/notifications");
+    return this.request<Notification[]>("/api/notifications");
   }
 
   // Get selected crops
   async getSelectedCrops() {
-    return this.request<any[]>("/api/crops/selected");
+    return this.request<CropSelection[]>("/api/crops/selected");
   }
+
   // Get weather data
   async getWeather(lat: number, lon: number) {
-    return this.request<any>(`/api/weather?latitude=${lat}&longitude=${lon}`);
+    return this.request<WeatherResponse>(
+      `/api/weather?latitude=${lat}&longitude=${lon}`,
+    );
   }
 }
 

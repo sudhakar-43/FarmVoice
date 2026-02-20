@@ -1,48 +1,52 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaCloudSun, FaTemperatureHigh, FaWind, FaTint, FaMapMarkerAlt, FaSpinner, FaLeaf, FaExclamationTriangle, FaWater, FaSprayCan } from "react-icons/fa";
+import { FaCloudSun, FaTemperatureHigh, FaWind, FaTint, FaMapMarkerAlt, FaSpinner, FaCloudRain, FaSun, FaSnowflake, FaCloud, FaArrowRight } from "react-icons/fa";
 import { apiClient } from "@/lib/api";
 import { useSettings } from "@/context/SettingsContext";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 interface WeatherWidgetProps {
   compact?: boolean;
 }
 
-interface Insight {
-  type: "spraying" | "disease" | "irrigation" | "temperature" | "harvest";
-  status: "good" | "warning" | "danger";
-  message: string;
-  icon: React.ReactNode;
-}
-
 export default function WeatherWidget({ compact = false }: WeatherWidgetProps) {
   const { t } = useSettings();
+  const router = useRouter();
   const [weather, setWeather] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [insights, setInsights] = useState<Insight[]>([]);
 
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        // Get user location from profile or use default
+        const cached = localStorage.getItem("farmvoice_weather_cache");
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp < 1800000) { // 30 min cache
+                setWeather(data);
+                setLoading(false);
+                return;
+            }
+        }
+
         const profile = JSON.parse(localStorage.getItem("farmvoice_profile") || "{}");
-        const lat = profile.latitude || 16.3067; // Default to Guntur
+        const lat = profile.latitude || 16.3067;
         const lon = profile.longitude || 80.4365;
 
         const response = await apiClient.getWeather(lat, lon);
         
-        if (response.error) {
-          throw new Error(response.error);
-        }
+        if (response.error) throw new Error(response.error);
 
         if (response.data) {
           setWeather(response.data);
-          generateInsights(response.data);
+          localStorage.setItem("farmvoice_weather_cache", JSON.stringify({
+              data: response.data,
+              timestamp: Date.now()
+          }));
         }
-      } catch (err) {
-        console.error("Error fetching weather:", err);
+      } catch {
         setError("Failed to load weather");
       } finally {
         setLoading(false);
@@ -52,192 +56,88 @@ export default function WeatherWidget({ compact = false }: WeatherWidgetProps) {
     fetchWeather();
   }, []);
 
-  const generateInsights = (data: any) => {
-    const current = data.current;
-    const newInsights: Insight[] = [];
+  const getWeatherIcon = (condition: string) => {
+    const c = condition?.toLowerCase() || "";
+    if (c.includes("rain")) return <FaCloudRain className="text-blue-300 drop-shadow-md" />;
+    if (c.includes("cloud")) return <FaCloud className="text-gray-300 drop-shadow-md" />;
+    if (c.includes("snow")) return <FaSnowflake className="text-blue-200 drop-shadow-md" />;
+    if (c.includes("clear") || c.includes("sun")) return <FaSun className="text-yellow-300 drop-shadow-lg" />;
+    return <FaCloudSun className="text-yellow-100 drop-shadow-md" />;
+  };
 
-    // 1. Spraying Advisory
-    if (current.wind_speed > 15) {
-      newInsights.push({
-        type: "spraying",
-        status: "danger",
-        message: "insight_spray_danger",
-        icon: <FaWind />
-      });
-    } else if (current.wind_speed < 5) {
-       newInsights.push({
-        type: "spraying",
-        status: "good",
-        message: "insight_spray_good",
-        icon: <FaSprayCan />
-      });
-    }
-
-    // 2. Disease Risk (Fungal)
-    if (current.humidity > 85 && current.temperature > 20 && current.temperature < 30) {
-      newInsights.push({
-        type: "disease",
-        status: "warning",
-        message: "insight_disease_warning",
-        icon: <FaExclamationTriangle />
-      });
-    }
-
-    // 3. Irrigation Alert
-    const soilMoisture = data.current.soil_moisture;
-    if (soilMoisture !== undefined && soilMoisture < 30) {
-      newInsights.push({
-        type: "irrigation",
-        status: "warning",
-        message: "insight_irrigation_warning",
-        icon: <FaWater />
-      });
-    } else if (current.condition.toLowerCase().includes("rain")) {
-       newInsights.push({
-        type: "irrigation",
-        status: "good",
-        message: "insight_irrigation_good",
-        icon: <FaCloudSun />
-      });
-    }
-
-    // 4. Heat/Frost Stress
-    if (current.temperature > 35) {
-      newInsights.push({
-        type: "temperature",
-        status: "danger",
-        message: "insight_heat_danger",
-        icon: <FaTemperatureHigh />
-      });
-    } else if (current.temperature < 10) {
-       newInsights.push({
-        type: "temperature",
-        status: "warning",
-        message: "insight_cold_warning",
-        icon: <FaTemperatureHigh />
-      });
-    }
-
-    setInsights(newInsights);
+  const getGradient = (condition: string) => {
+    const c = condition?.toLowerCase() || "";
+    if (c.includes("rain")) return "from-blue-600 to-indigo-700";
+    if (c.includes("cloud")) return "from-slate-500 to-slate-700";
+    if (c.includes("clear") || c.includes("sun")) return "from-blue-400 to-blue-600";
+    return "from-blue-500 to-cyan-600";
   };
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 h-full flex items-center justify-center">
-        <FaSpinner className="animate-spin text-emerald-600 dark:text-emerald-400 text-2xl" />
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col items-center justify-center min-h-[180px]">
+        <FaSpinner className="animate-spin text-emerald-500 text-2xl mb-2" />
+        <p className="text-xs text-gray-400">Loading forecast...</p>
       </div>
     );
   }
 
   if (error || !weather) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 h-full flex items-center justify-center text-red-500 dark:text-red-400">
-        <p>{t('weather_unavailable')}</p>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 h-full flex items-center justify-center text-red-500 min-h-[180px]">
+        <p className="text-sm">{t('weather_unavailable')}</p>
       </div>
     );
   }
 
   const current = weather.current;
-  const location = "Guntur, AP"; // In a real app, reverse geocode this
-
-  if (compact) {
-    return (
-      <div className="text-gray-800 dark:text-white h-full flex flex-col justify-between">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center">
-            <FaCloudSun className="text-4xl mr-3 text-yellow-500" />
-            <div>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">{current.temperature}°C</div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{current.condition}</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="flex items-center justify-end text-sm text-gray-500 dark:text-gray-400 mb-1">
-              <FaMapMarkerAlt className="mr-1 text-emerald-600 dark:text-emerald-400" /> {location}
-            </div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-3 mt-auto bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 border border-gray-100 dark:border-gray-600">
-          <div className="flex items-center">
-            <FaTint className="mr-2 text-blue-500 dark:text-blue-400" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{current.humidity}% {t('humidity')}</span>
-          </div>
-          <div className="flex items-center">
-            <FaWind className="mr-2 text-gray-500 dark:text-gray-400" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{current.wind_speed} km/h {t('wind')}</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const location = "Your Field"; // Could be dynamic
+  const gradient = getGradient(current.condition);
 
   return (
-    <div className="space-y-6">
-      {/* Main Weather Card */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-700 dark:to-blue-900 rounded-3xl text-white p-8 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-yellow-300 opacity-20 rounded-full blur-2xl"></div>
-        
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between">
-          <div className="flex items-center mb-6 md:mb-0">
-            <FaCloudSun className="text-7xl mr-6 text-yellow-300 drop-shadow-lg" />
-            <div>
-              <div className="text-6xl font-bold mb-1 drop-shadow-md">{current.temperature}°C</div>
-              <div className="text-xl font-medium opacity-90">{current.condition}</div>
-              <div className="flex items-center mt-2 text-sm opacity-80">
-                <FaMapMarkerAlt className="mr-1" /> {location}
-              </div>
-            </div>
+    <div className={`relative overflow-hidden rounded-2xl shadow-sm text-white bg-gradient-to-br ${gradient} h-full min-h-[180px] group`}>
+       {/* Background Decoration */}
+       <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity"></div>
+       
+       <div className="p-5 h-full flex flex-col justify-between relative z-10">
+          <div className="flex justify-between items-start">
+             <div>
+                <div className="flex items-center gap-1 text-xs font-medium text-white/80 mb-1">
+                   <FaMapMarkerAlt /> {location}
+                </div>
+                <h3 className="text-3xl font-bold">{Math.round(current.temperature)}°</h3>
+                <p className="text-sm font-medium text-white/90">{current.condition}</p>
+             </div>
+             
+             <motion.div 
+               initial={{ scale: 0.8, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               className="text-4xl"
+             >
+                {getWeatherIcon(current.condition)}
+             </motion.div>
           </div>
 
-          <div className="flex space-x-4 text-center">
-            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 min-w-[100px] border border-white/10">
-              <p className="text-xs font-bold mb-2 opacity-80 uppercase tracking-wider">{t('humidity')}</p>
-              <FaTint className="text-2xl mx-auto mb-2" />
-              <p className="font-bold text-lg">{current.humidity}%</p>
-            </div>
-            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 min-w-[100px] border border-white/10">
-               <p className="text-xs font-bold mb-2 opacity-80 uppercase tracking-wider">{t('wind')}</p>
-               <FaWind className="text-2xl mx-auto mb-2" />
-               <p className="font-bold text-lg">{current.wind_speed} <span className="text-xs">km/h</span></p>
-            </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center">
+                <FaTint className="mx-auto mb-1 text-blue-200 text-xs" />
+                <span className="text-xs font-bold block">{current.humidity}%</span>
+                <span className="text-[10px] text-white/70 block uppercase">Humidity</span>
+             </div>
+             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center">
+                <FaWind className="mx-auto mb-1 text-gray-200 text-xs" />
+                <span className="text-xs font-bold block">{current.wind_speed} km/h</span>
+                <span className="text-[10px] text-white/70 block uppercase">Wind</span>
+             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Farming Insights Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {insights.length > 0 ? (
-          insights.map((insight, index) => (
-            <div 
-              key={index}
-              className={`p-4 rounded-2xl border-l-4 shadow-sm flex items-start space-x-4 ${
-                insight.status === "danger" ? "bg-red-50 dark:bg-red-900/20 border-red-500 text-red-800 dark:text-red-200" :
-                insight.status === "warning" ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-800 dark:text-yellow-200" :
-                "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 text-emerald-800 dark:text-emerald-200"
-              }`}
-            >
-              <div className={`p-2 rounded-full ${
-                insight.status === "danger" ? "bg-red-100 dark:bg-red-800/50 text-red-600 dark:text-red-300" :
-                insight.status === "warning" ? "bg-yellow-100 dark:bg-yellow-800/50 text-yellow-600 dark:text-yellow-300" :
-                "bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-300"
-              }`}>
-                {insight.icon}
-              </div>
-              <div>
-                <h4 className="font-bold text-sm uppercase tracking-wide opacity-80 mb-1">{t('insight')}</h4>
-                <p className="font-medium leading-tight">{t(insight.message as any)}</p>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-2 p-6 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400">
-            <FaLeaf className="mx-auto text-3xl mb-2 opacity-30" />
-            <p>{t('stable_conditions')}</p>
-          </div>
-        )}
-      </div>
+          
+          <button 
+             onClick={() => router.push("/home/weather")}
+             className="absolute bottom-4 right-4 text-white/80 hover:text-white transition-colors"
+          >
+             <FaArrowRight size={14} />
+          </button>
+       </div>
     </div>
   );
 }

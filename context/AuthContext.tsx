@@ -14,8 +14,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Handler for global auth errors
     const handleAuthError = () => {
-      console.log("AuthContext: Received auth error, redirecting to login...");
-      
       // Clear any auth data from storage
       apiClient.clearToken();
       if (typeof window !== "undefined") {
@@ -25,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("farmvoice_user_id");
         localStorage.removeItem("farmvoice_user_name");
       }
-      
+
       // Redirect to login
       router.push("/login");
     };

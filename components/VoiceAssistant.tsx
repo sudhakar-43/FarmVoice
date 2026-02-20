@@ -8,6 +8,7 @@ import {
   FaStop,
 } from "react-icons/fa";
 import { apiClient } from "@/lib/api";
+import { VoiceResponse, UIUpdate, VoicePollResponse } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import InteractiveBackground from "./InteractiveBackground"; // Use local import if in same dir
 
@@ -32,22 +33,19 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const lastTranscriptRef = useRef("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Geolocation State
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   const fetchLocation = () => {
     if (typeof navigator !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log("Geolocation success:", position.coords);
           setLocation({
             lat: position.coords.latitude,
             lon: position.coords.longitude
           });
         },
-        (error) => {
-          console.warn("Geolocation error:", error);
+        () => {
+          // Geolocation error - silently fail, location is optional
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
@@ -66,8 +64,8 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
 
   useEffect(() => {
     if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+      const SpeechRecognitionCtor = (window as unknown as { webkitSpeechRecognition: new () => SpeechRecognition }).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognitionCtor();
 
       if (!recognitionRef.current) return;
 
@@ -75,7 +73,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = "en-US";
 
-      recognitionRef.current.onresult = (event: any) => {
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
         let interimTranscript = "";
         let finalTranscript = "";
 
@@ -115,17 +113,16 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
         if (voiceState === "listening") {
           try {
             recognitionRef.current?.start();
-          } catch (e) {
-            console.log("Could not restart recognition");
+          } catch {
+            // Could not restart recognition - silently fail
           }
         }
       };
       
-      recognitionRef.current.onerror = (event: any) => {
+      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
         if (event.error !== "aborted" && event.error !== "no-speech") {
            // Only transition to error/idle if it's a real error
-           console.error("Speech recognition error", event.error);
-           setVoiceState("idle"); 
+           setVoiceState("idle");
         }
       };
     }
@@ -227,9 +224,9 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
 
       if (response.error) throw new Error(response.error);
 
-      if ((response as any).data) {
-        const data = (response as any).data;
-        
+      if (response.data) {
+        const data = response.data;
+
         // Handle ACK mode - DO NOT SPEAK ACK. Just start polling.
         if (data.mode === "ack" && data.request_id) {
            // Wait silently for the real answer.
@@ -237,20 +234,19 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
            pollStartTimeRef.current = Date.now();
            currentRequestIdRef.current = data.request_id;
            startPolling(data.request_id);
-          
+
         } else {
           // Legacy/direct response
           handleFinalResponse(data);
         }
       }
-    } catch (err: any) {
-      console.error("Voice query error:", err);
+    } catch (err) {
       let errorSpeech = "I encountered a network configuration error. Please try again.";
-      
-      if (err.message && (err.message.includes("Session expired") || err.message.includes("log in"))) {
+
+      if (err instanceof Error && (err.message.includes("Session expired") || err.message.includes("log in"))) {
           errorSpeech = "Your session has expired. Please log in again to continue.";
       }
-      
+
       const errorMessage: Message = { type: "assistant", text: errorSpeech, timestamp: new Date() };
       setMessages((prev) => [...prev, errorMessage]);
       setVoiceState("error");
@@ -281,7 +277,6 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
 
       // Check timeout / max attempts (e.g. 60 attempts = 60 seconds)
       if (pollAttemptsRef.current > 60) {
-        console.warn("Polling timeout reached (max attempts)");
         const timeoutSpeech = "I'm searching for that information, but it's taking a bit longer than usual.";
         const timeoutMessage: Message = {
           type: "assistant",
@@ -289,7 +284,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, timeoutMessage]);
-        
+
         // Timeout -> Error state
         setVoiceState("error");
         speakResponse(timeoutSpeech);
@@ -301,7 +296,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
       pollAttemptsRef.current++;
 
       try {
-        const response = await apiClient.request<any>(
+        const response = await apiClient.request<VoicePollResponse>(
           `/api/voice/chat/result/${requestId}`
         );
 
@@ -309,9 +304,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
         if (currentRequestIdRef.current !== requestId) return;
 
         if (response.error) {
-           console.warn(`Polling error (attempt ${pollAttemptsRef.current}):`, response.error);
-           // If 404, maybe it's gone? For now, retry a few times then fail? 
-           // We'll just retry for now until timeout.
+           // Polling error - retry until timeout
            pollingRef.current = setTimeout(poll, POLL_INTERVAL_MS);
            return;
         }
@@ -329,7 +322,6 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
           if (data.status === "error" || data.error) {
              // ERROR: Stop polling
              currentRequestIdRef.current = null;
-             console.error("Backend reported error:", data.error);
              speakResponse("I encountered a problem processing that.");
              setVoiceState("error");
              return;
@@ -342,8 +334,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
         // Schedule next poll
         pollingRef.current = setTimeout(poll, POLL_INTERVAL_MS);
 
-      } catch (err) {
-        console.error("Polling network error:", err);
+      } catch {
         // Retry on network error
         pollingRef.current = setTimeout(poll, POLL_INTERVAL_MS);
       } finally {
@@ -355,7 +346,7 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
     poll();
   };
 
-  const handleFinalResponse = (data: any) => {
+  const handleFinalResponse = (data: VoiceResponse) => {
     // Handle UI updates
     if (data.ui_updates) {
       if (data.ui_updates.refresh_tasks) 
@@ -409,18 +400,15 @@ export default function VoiceAssistant({ onClose }: VoiceAssistantProps) {
     if (preferredVoice) utterance.voice = preferredVoice;
 
     utterance.onstart = () => {
-        console.log("Final speech started");
         // Ensure state is responding
         setVoiceState("responding");
     };
 
     utterance.onend = () => {
-        console.log("Final speech ended — voice idle");
         setVoiceState("idle");
     };
 
-    utterance.onerror = (e) => {
-        console.error("TTS Error", e);
+    utterance.onerror = () => {
         setVoiceState("idle");
     };
 

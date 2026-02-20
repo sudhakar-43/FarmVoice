@@ -6,10 +6,64 @@ Uses free sources: OpenStreetMap, SoilGrids, Open-Meteo
 import httpx
 import os
 import csv
+import asyncio
 from typing import Dict, Optional, List
 from dotenv import load_dotenv
 
+# Global HTTP client with connection pooling for performance
+# Uses shorter timeout (8s) and keeps connections alive
+_http_client: Optional[httpx.AsyncClient] = None
+
+def get_http_client() -> httpx.AsyncClient:
+    """Get or create a shared HTTP client with connection pooling"""
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(
+            timeout=5.0,  # PERFORMANCE: Reduced from 8s to 5s
+            limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
+            headers={"User-Agent": "FarmVoice/1.0"}
+        )
+    return _http_client
+
 load_dotenv()
+
+# PERFORMANCE: In-memory caches with TTL for instant responses
+import time
+from functools import lru_cache
+
+# Cache for weather data: key -> (data, timestamp)
+_weather_cache: Dict[str, tuple] = {}
+_soil_cache: Dict[str, tuple] = {}
+WEATHER_CACHE_TTL = 600  # 10 minutes
+SOIL_CACHE_TTL = 3600    # 1 hour (soil doesn't change often)
+
+def get_cached_weather(lat: float, lon: float) -> Optional[Dict]:
+    """Get weather from cache if fresh"""
+    key = f"{lat:.2f},{lon:.2f}"
+    if key in _weather_cache:
+        data, ts = _weather_cache[key]
+        if time.time() - ts < WEATHER_CACHE_TTL:
+            return data
+    return None
+
+def set_cached_weather(lat: float, lon: float, data: Dict):
+    """Store weather in cache"""
+    key = f"{lat:.2f},{lon:.2f}"
+    _weather_cache[key] = (data, time.time())
+
+def get_cached_soil(lat: float, lon: float) -> Optional[Dict]:
+    """Get soil from cache if fresh"""
+    key = f"{lat:.2f},{lon:.2f}"
+    if key in _soil_cache:
+        data, ts = _soil_cache[key]
+        if time.time() - ts < SOIL_CACHE_TTL:
+            return data
+    return None
+
+def set_cached_soil(lat: float, lon: float, data: Dict):
+    """Store soil in cache"""
+    key = f"{lat:.2f},{lon:.2f}"
+    _soil_cache[key] = (data, time.time())
 
 # Global cache for pincode data
 PINCODE_MAP = {}
@@ -103,13 +157,17 @@ async def get_pincode_data(pincode: str) -> Dict:
             city = data['city']
             region = extract_region_from_name(state)
             
-            # Enhance with LIVE weather & Soil data
-            soil_data = await get_soil_data_from_soilgrids(lat, lon)
-            soil_type = soil_data.get("soil_type", "loamy") if soil_data else determine_soil_type(region, state)
+            # Enhance with LIVE weather & Soil data - PARALLEL FETCH for speed
             climate = determine_climate(region, state)
-            
-            # Real-time weather
-            weather = await get_weather_data(lat, lon)
+            soil_result, weather_result = await asyncio.gather(
+                get_soil_data_from_soilgrids(lat, lon),
+                get_weather_data(lat, lon),
+                return_exceptions=True
+            )
+            # Handle potential exceptions from parallel fetch
+            soil_data = soil_result if not isinstance(soil_result, Exception) else None
+            weather = weather_result if not isinstance(weather_result, Exception) else {}
+            soil_type = soil_data.get("soil_type", "loamy") if soil_data else determine_soil_type(region, state)
             
             # Suitable crops
             suitable_crops = get_suitable_crops_for_region(state, district, soil_type, climate)
@@ -520,71 +578,79 @@ def extract_district_from_name(display_name: str) -> str:
 
 async def get_soil_data_from_soilgrids(lat: float, lon: float) -> Optional[Dict]:
     """Get soil data from SoilGrids API (free, no API key required - ISRIC World Soil Information)"""
+    # PERFORMANCE: Check cache first for instant response
+    cached = get_cached_soil(lat, lon)
+    if cached:
+        return cached
+    
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            # SoilGrids REST API - free access, government/research-grade data
-            # Get soil properties at multiple depths for better accuracy
-            soilgrids_url = "https://rest.isric.org/soilgrids/v2.0/properties/query"
+        client = get_http_client()
+        # SoilGrids REST API - free access, government/research-grade data
+        # Get soil properties at multiple depths for better accuracy
+        soilgrids_url = "https://rest.isric.org/soilgrids/v2.0/properties/query"
+        
+        # Get data for topsoil (0-5cm) and subsoil (5-15cm) for agricultural use
+        params = {
+            "lon": lon,
+            "lat": lat,
+            "property": "bdod,cec,cfvo,clay,nitrogen,ocd,phh2o,sand,silt,soc",
+            "depth": "0-5cm,5-15cm",  # Multiple depths
+            "value": "mean"
+        }
+        
+        response = await client.get(soilgrids_url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            properties = data.get("properties", [])
             
-            # Get data for topsoil (0-5cm) and subsoil (5-15cm) for agricultural use
-            params = {
-                "lon": lon,
-                "lat": lat,
-                "property": "bdod,cec,cfvo,clay,nitrogen,ocd,phh2o,sand,silt,soc",
-                "depth": "0-5cm,5-15cm",  # Multiple depths
-                "value": "mean"
-            }
-            
-            response = await client.get(soilgrids_url, params=params)
-            if response.status_code == 200:
-                data = response.json()
-                properties = data.get("properties", [])
+            if properties:
+                # Extract soil properties for topsoil (0-5cm) - primary for agriculture
+                soil_data = {}
+                for prop in properties:
+                    name = prop.get("name", "")
+                    depths = prop.get("depths", [])
+                    # Get topsoil (0-5cm) data
+                    if depths and len(depths) > 0:
+                        topsoil_values = depths[0].get("values", {})
+                        mean_value = topsoil_values.get("mean", 0)
+                        soil_data[name] = mean_value
                 
-                if properties:
-                    # Extract soil properties for topsoil (0-5cm) - primary for agriculture
-                    soil_data = {}
-                    for prop in properties:
-                        name = prop.get("name", "")
-                        depths = prop.get("depths", [])
-                        # Get topsoil (0-5cm) data
-                        if depths and len(depths) > 0:
-                            topsoil_values = depths[0].get("values", {})
-                            mean_value = topsoil_values.get("mean", 0)
-                            soil_data[name] = mean_value
-                    
-                    # Determine soil type based on texture (clay, sand, silt percentages)
-                    clay = soil_data.get("clay", 0) / 10  # Convert from cg/kg to %
-                    sand = soil_data.get("sand", 0) / 10
-                    silt = soil_data.get("silt", 0) / 10
-                    
-                    soil_type = classify_soil_type(clay, sand, silt)
-                    
-                    # Calculate fertility indicators
-                    ph = round(soil_data.get("phh2o", 0) / 10, 1)  # Convert from pH*10
-                    organic_carbon = round(soil_data.get("soc", 0) / 10, 2)  # Convert from dg/kg
-                    nitrogen = round(soil_data.get("nitrogen", 0) / 100, 2)  # Convert from cg/kg
-                    
-                    # Determine fertility level
-                    fertility_level = "medium"
-                    if organic_carbon > 0.75 and ph >= 6.0 and ph <= 7.5:
-                        fertility_level = "high"
-                    elif organic_carbon < 0.5 or ph < 5.5 or ph > 8.0:
-                        fertility_level = "low"
-                    
-                    return {
-                        "soil_type": soil_type,
-                        "clay_percent": round(clay, 1),
-                        "sand_percent": round(sand, 1),
-                        "silt_percent": round(silt, 1),
-                        "ph": ph,
-                        "organic_carbon": organic_carbon,
-                        "nitrogen": nitrogen,
-                        "bulk_density": round(soil_data.get("bdod", 0) / 100, 2),  # Convert from cg/cm3
-                        "cec": round(soil_data.get("cec", 0) / 10, 1),  # Cation exchange capacity
-                        "fertility_level": fertility_level,
-                        "source": "SoilGrids (ISRIC World Soil Information)",
-                        "suitable_for": get_crops_for_soil_type(soil_type, ph, fertility_level)
-                    }
+                # Determine soil type based on texture (clay, sand, silt percentages)
+                clay = soil_data.get("clay", 0) / 10  # Convert from cg/kg to %
+                sand = soil_data.get("sand", 0) / 10
+                silt = soil_data.get("silt", 0) / 10
+                
+                soil_type = classify_soil_type(clay, sand, silt)
+                
+                # Calculate fertility indicators
+                ph = round(soil_data.get("phh2o", 0) / 10, 1)  # Convert from pH*10
+                organic_carbon = round(soil_data.get("soc", 0) / 10, 2)  # Convert from dg/kg
+                nitrogen = round(soil_data.get("nitrogen", 0) / 100, 2)  # Convert from cg/kg
+                
+                # Determine fertility level
+                fertility_level = "medium"
+                if organic_carbon > 0.75 and ph >= 6.0 and ph <= 7.5:
+                    fertility_level = "high"
+                elif organic_carbon < 0.5 or ph < 5.5 or ph > 8.0:
+                    fertility_level = "low"
+                
+                result = {
+                    "soil_type": soil_type,
+                    "clay_percent": round(clay, 1),
+                    "sand_percent": round(sand, 1),
+                    "silt_percent": round(silt, 1),
+                    "ph": ph,
+                    "organic_carbon": organic_carbon,
+                    "nitrogen": nitrogen,
+                    "bulk_density": round(soil_data.get("bdod", 0) / 100, 2),  # Convert from cg/cm3
+                    "cec": round(soil_data.get("cec", 0) / 10, 1),  # Cation exchange capacity
+                    "fertility_level": fertility_level,
+                    "source": "SoilGrids (ISRIC World Soil Information)",
+                    "suitable_for": get_crops_for_soil_type(soil_type, ph, fertility_level)
+                }
+                # PERFORMANCE: Cache for next request
+                set_cached_soil(lat, lon, result)
+                return result
     except Exception as e:
         print(f"Error fetching soil data from SoilGrids: {e}")
         import traceback
@@ -688,124 +754,131 @@ async def get_weather_data(lat: float, lon: float) -> Dict:
     """Get real-time current weather data using Open-Meteo (free, no API key required)"""
     from datetime import datetime, timezone
     
+    # PERFORMANCE: Check cache first for instant response
+    cached = get_cached_weather(lat, lon)
+    if cached:
+        return cached
+    
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            # Open-Meteo API - free, no API key needed, real-time government-grade data
-            # Using current weather endpoint for most accurate real-time data
-            weather_url = "https://api.open-meteo.com/v1/forecast"
-            params = {
-                "latitude": lat,
-                "longitude": lon,
-                "current": "temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day,soil_temperature_0cm,soil_moisture_0_to_1cm",
-                "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,wind_speed_10m_max",
-                "timezone": "auto",
-                "forecast_days": 7,
-                "hourly": "temperature_2m,precipitation_probability,relative_humidity_2m,soil_temperature_0cm,soil_moisture_0_to_1cm",
-                "timezone": "auto"
-            }
+        client = get_http_client()
+        # Open-Meteo API - free, no API key needed, real-time government-grade data
+        # Using current weather endpoint for most accurate real-time data
+        weather_url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "current": "temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,is_day,soil_temperature_0cm,soil_moisture_0_to_1cm",
+            "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,wind_speed_10m_max",
+            "timezone": "auto",
+            "forecast_days": 7,
+            "hourly": "temperature_2m,precipitation_probability,relative_humidity_2m,soil_temperature_0cm,soil_moisture_0_to_1cm"
+        }
+        
+        response = await client.get(weather_url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            current = data.get("current", {})
+            daily = data.get("daily", {})
+            hourly = data.get("hourly", {})
             
-            response = await client.get(weather_url, params=params)
-            if response.status_code == 200:
-                data = response.json()
-                current = data.get("current", {})
-                daily = data.get("daily", {})
-                hourly = data.get("hourly", {})
+            # Get real-time current weather (most accurate)
+            temp = current.get("temperature_2m", 0)
+            humidity = current.get("relative_humidity_2m", 0)
+            precipitation = current.get("precipitation", 0)
+            weather_code = current.get("weather_code", 0)
+            wind_speed = current.get("wind_speed_10m", 0)
+            is_day = current.get("is_day", 1)
+            soil_temp = current.get("soil_temperature_0cm", 0)
+            soil_moisture = current.get("soil_moisture_0_to_1cm", 0)
+            
+            # Get forecast data
+            daily_temps_max = daily.get("temperature_2m_max", [])
+            daily_temps_min = daily.get("temperature_2m_min", [])
+            daily_precip = daily.get("precipitation_sum", [])
+            daily_weather_codes = daily.get("weather_code", [])
+            
+            # Get hourly data for next 24 hours for accuracy
+            hourly_temps = hourly.get("temperature_2m", [])[:24] if hourly else []
+            hourly_precip_prob = hourly.get("precipitation_probability", [])[:24] if hourly else []
+            hourly_humidity = hourly.get("relative_humidity_2m", [])[:24] if hourly else []
+            
+            # Determine season/condition from real-time data
+            condition = get_weather_condition(weather_code, precipitation, temp)
+            
+            # Calculate accurate averages and trends
+            avg_temp = (max(daily_temps_max) + min(daily_temps_min)) / 2 if daily_temps_max and daily_temps_min else temp
+            total_precip_7d = sum(daily_precip) if daily_precip else 0
+            avg_humidity_24h = sum(hourly_humidity) / len(hourly_humidity) if hourly_humidity and len(hourly_humidity) > 0 else humidity
+            
+            # Determine agricultural season
+            season = determine_agricultural_season(lat, lon, temp, precipitation)
+            
+            # Get current timestamp for data freshness
+            current_time = datetime.now(timezone.utc).isoformat()
+            
+            # Prepare detailed daily forecast list
+            daily_forecast_list = []
+            for i in range(len(daily_temps_max)):
+                # Get date for this day
+                import datetime as dt # avoid conflict with param
+                day_date = (dt.datetime.now() + dt.timedelta(days=i)).isoformat()
                 
-                # Get real-time current weather (most accurate)
-                temp = current.get("temperature_2m", 0)
-                humidity = current.get("relative_humidity_2m", 0)
-                precipitation = current.get("precipitation", 0)
-                weather_code = current.get("weather_code", 0)
-                wind_speed = current.get("wind_speed_10m", 0)
-                is_day = current.get("is_day", 1)
-                soil_temp = current.get("soil_temperature_0cm", 0)
-                soil_moisture = current.get("soil_moisture_0_to_1cm", 0)
-                
-                # Get forecast data
-                daily_temps_max = daily.get("temperature_2m_max", [])
-                daily_temps_min = daily.get("temperature_2m_min", [])
-                daily_precip = daily.get("precipitation_sum", [])
-                daily_weather_codes = daily.get("weather_code", [])
-                
-                # Get hourly data for next 24 hours for accuracy
-                hourly_temps = hourly.get("temperature_2m", [])[:24] if hourly else []
-                hourly_precip_prob = hourly.get("precipitation_probability", [])[:24] if hourly else []
-                hourly_humidity = hourly.get("relative_humidity_2m", [])[:24] if hourly else []
-                
-                # Determine season/condition from real-time data
-                condition = get_weather_condition(weather_code, precipitation, temp)
-                
-                # Calculate accurate averages and trends
-                avg_temp = (max(daily_temps_max) + min(daily_temps_min)) / 2 if daily_temps_max and daily_temps_min else temp
-                total_precip_7d = sum(daily_precip) if daily_precip else 0
-                avg_humidity_24h = sum(hourly_humidity) / len(hourly_humidity) if hourly_humidity and len(hourly_humidity) > 0 else humidity
-                
-                # Determine agricultural season
-                season = determine_agricultural_season(lat, lon, temp, precipitation)
-                
-                # Get current timestamp for data freshness
-                current_time = datetime.now(timezone.utc).isoformat()
-                
-                # Prepare detailed daily forecast list
-                daily_forecast_list = []
-                for i in range(len(daily_temps_max)):
-                    # Get date for this day
-                    import datetime as dt # avoid conflict with param
-                    day_date = (dt.datetime.now() + dt.timedelta(days=i)).isoformat()
-                    
-                    daily_forecast_list.append({
-                        "date": day_date,
-                        "max_temp": daily_temps_max[i] if i < len(daily_temps_max) else 0,
-                        "min_temp": daily_temps_min[i] if i < len(daily_temps_min) else 0,
-                        "precipitation": daily_precip[i] if i < len(daily_precip) else 0,
-                        "weather_code": daily_weather_codes[i] if i < len(daily_weather_codes) else 0,
-                        "condition": get_weather_condition(daily_weather_codes[i], 0, 25) if i < len(daily_weather_codes) else "Clear"
-                    })
+                daily_forecast_list.append({
+                    "date": day_date,
+                    "max_temp": daily_temps_max[i] if i < len(daily_temps_max) else 0,
+                    "min_temp": daily_temps_min[i] if i < len(daily_temps_min) else 0,
+                    "precipitation": daily_precip[i] if i < len(daily_precip) else 0,
+                    "weather_code": daily_weather_codes[i] if i < len(daily_weather_codes) else 0,
+                    "condition": get_weather_condition(daily_weather_codes[i], 0, 25) if i < len(daily_weather_codes) else "Clear"
+                })
 
-                # Prepare detailed hourly forecast list
-                hourly_forecast_list = []
-                for i in range(len(hourly_temps)):
-                    # Calculate hour time
-                    hour_time = (dt.datetime.now() + dt.timedelta(hours=i)).strftime("%H:00")
-                    
-                    hourly_forecast_list.append({
-                        "time": hour_time,
-                        "temperature": hourly_temps[i],
-                        "humidity": hourly_humidity[i] if i < len(hourly_humidity) else 0,
-                        "precipitation_prob": hourly_precip_prob[i] if i < len(hourly_precip_prob) else 0,
-                        "weather_code": weather_code, # Use current as hourly code usually matches or is complex to map individually without more data
-                        "condition": get_weather_condition(weather_code, 0, hourly_temps[i]) 
-                    })
+            # Prepare detailed hourly forecast list
+            hourly_forecast_list = []
+            for i in range(len(hourly_temps)):
+                # Calculate hour time
+                hour_time = (dt.datetime.now() + dt.timedelta(hours=i)).strftime("%H:00")
+                
+                hourly_forecast_list.append({
+                    "time": hour_time,
+                    "temperature": hourly_temps[i],
+                    "humidity": hourly_humidity[i] if i < len(hourly_humidity) else 0,
+                    "precipitation_prob": hourly_precip_prob[i] if i < len(hourly_precip_prob) else 0,
+                    "weather_code": weather_code,
+                    "condition": get_weather_condition(weather_code, 0, hourly_temps[i]) 
+                })
 
-                return {
-                    "current": {
-                        "temperature": round(temp, 1),
-                        "humidity": round(humidity, 1),
-                        "precipitation": round(precipitation, 1),
-                        "wind_speed": round(wind_speed, 1),
-                        "condition": condition,
-                        "weather_code": weather_code,
-                        "is_day": is_day,
-                        "soil_temperature": round(soil_temp, 1) if soil_temp is not None else None,
-                        "soil_moisture": round(soil_moisture, 3) if soil_moisture is not None else None
-                    },
-                    "forecast": {
-                        "max_temp": round(max(daily_temps_max) if daily_temps_max else temp, 1),
-                        "min_temp": round(min(daily_temps_min) if daily_temps_min else temp, 1),
-                        "avg_temp": round(avg_temp, 1),
-                        "total_precipitation": round(total_precip_7d, 1),
-                        "days": len(daily_temps_max),
-                        "next_24h_precip_probability": round(sum(hourly_precip_prob) / len(hourly_precip_prob) if hourly_precip_prob else 0, 1),
-                        "avg_humidity_24h": round(avg_humidity_24h, 1) if hourly_humidity else round(humidity, 1)
-                    },
-                    "daily_forecast": daily_forecast_list,
-                    "hourly_forecast": hourly_forecast_list,
-                    "season": season,
-                    "description": f"{condition} - Temp: {round(temp, 1)}°C, Humidity: {round(humidity, 1)}%",
-                    "source": "Open-Meteo (Real-time Data)",
-                    "last_updated": current_time,
-                    "data_freshness": "Real-time"
-                }
+            result = {
+                "current": {
+                    "temperature": round(temp, 1),
+                    "humidity": round(humidity, 1),
+                    "precipitation": round(precipitation, 1),
+                    "wind_speed": round(wind_speed, 1),
+                    "condition": condition,
+                    "weather_code": weather_code,
+                    "is_day": is_day,
+                    "soil_temperature": round(soil_temp, 1) if soil_temp is not None else None,
+                    "soil_moisture": round(soil_moisture, 3) if soil_moisture is not None else None
+                },
+                "forecast": {
+                    "max_temp": round(max(daily_temps_max) if daily_temps_max else temp, 1),
+                    "min_temp": round(min(daily_temps_min) if daily_temps_min else temp, 1),
+                    "avg_temp": round(avg_temp, 1),
+                    "total_precipitation": round(total_precip_7d, 1),
+                    "days": len(daily_temps_max),
+                    "next_24h_precip_probability": round(sum(hourly_precip_prob) / len(hourly_precip_prob) if hourly_precip_prob else 0, 1),
+                    "avg_humidity_24h": round(avg_humidity_24h, 1) if hourly_humidity else round(humidity, 1)
+                },
+                "daily_forecast": daily_forecast_list,
+                "hourly_forecast": hourly_forecast_list,
+                "season": season,
+                "description": f"{condition} - Temp: {round(temp, 1)}°C, Humidity: {round(humidity, 1)}%",
+                "source": "Open-Meteo (Real-time Data)",
+                "last_updated": current_time,
+                "data_freshness": "Real-time"
+            }
+            # PERFORMANCE: Cache for next request
+            set_cached_weather(lat, lon, result)
+            return result
     except Exception as e:
         print(f"Error fetching weather from Open-Meteo: {e}")
         import traceback
